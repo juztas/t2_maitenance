@@ -60,6 +60,7 @@ def execute():
                 # And send all metrics. after we done, close metrics sender.
                 lowestReturn = 3  # 3 means that everything is ok
                 for check in allChecks:
+                    print check
                     startTimer = int(time.time())
                     scriptLocation = "%s/%s" % (newEnv['SAME_SENSOR_HOME'], check)
                     key = check[:-3]  # Cut all not needed sh...
@@ -67,10 +68,14 @@ def execute():
                     endTimer = int(time.time())
                     # STDOUT newProc[0], STDERR newProc[1]
                     # If newProcReturn is not 3, save stdout, stderr
+                    if newProcReturn < lowestReturn:
+                        lowestReturn = newProcReturn
                     dbBackend.sendMetric('compute.status.%s' % key,
                                          newProcReturn, {'myhost': HOST, 'cmsCheck': key, 'timestamp': CURRENT_TIME})
                     dbBackend.sendMetric('compute.status.runtime.%s' % key,
                                          int(endTimer - startTimer), {'myhost': HOST, 'cmsCheck': key, 'timestamp': CURRENT_TIME})
+                dbBackend.sendMetric('compute.status.overall',
+                                     lowestReturn, {'myhost': HOST, 'cmsCheck': 'overall', 'timestamp': CURRENT_TIME})
                 dbBackend.stopWriter()
     except:
         print 'Total Failure'
