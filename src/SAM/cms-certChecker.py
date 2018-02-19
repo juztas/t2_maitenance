@@ -50,7 +50,7 @@ def checkCert(fileLoc):
     return SAME_ERROR
 
 if __name__ == "__main__":
-    certLoc = 'certlist.txt'
+    certLoc = '%s/certlist.txt' % os.environ['SAME_SENSOR_HOME']
     if len(sys.argv) == 2:
         certLoc = sys.argv[1]
     content = []
