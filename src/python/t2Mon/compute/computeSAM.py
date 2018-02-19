@@ -66,6 +66,9 @@ def execute():
                     key = check[:-3]  # Cut all not needed sh...
                     newProc, newProcReturn = externalCommand(scriptLocation, newEnv)
                     endTimer = int(time.time())
+                    print newProc[0]
+                    print '===='
+                    print newProc[1]
                     # STDOUT newProc[0], STDERR newProc[1]
                     print check, newProcReturn
                     # If newProcReturn is not 3, save stdout, stderr

@@ -50,7 +50,9 @@ def checkCert(fileLoc):
     return SAME_ERROR
 
 if __name__ == "__main__":
-    certLoc = sys.argv[1]
+    certLoc = 'certlist.txt'
+    if len(sys.argv) == 2:
+        certLoc = sys.argv[1]
     content = []
     with open(certLoc) as f:
         content = f.readlines()
