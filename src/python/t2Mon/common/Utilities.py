@@ -4,10 +4,14 @@ import shlex
 #import psutil
 
 
-def externalCommand(command):
+def externalCommand(command, newEnv=None):
     command = shlex.split(command)
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return p.communicate()
+    proc = None
+    if newEnv:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=newEnv)
+    else:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return proc.communicate()
 
 def tryConvertToNumeric(value):
     floatVal = None

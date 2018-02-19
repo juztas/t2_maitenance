@@ -24,10 +24,7 @@ class opentsdb(object):
         if self.metrics:
             self.metrics.wait()
 
-    def sendMetric(self, key, value, timestamp, extraTags):
+    def sendMetric(self, key, value, extraTags):
         if not self.metrics:
             self.getWriter()
-        if extraTags:
-            self.metrics.send(key, value, timestamp=timestamp, *extraTags)
-        else:
-            self.metrics.send(key, value, timestamp=timestamp)
+        self.metrics.send(key, value, **extraTags)
