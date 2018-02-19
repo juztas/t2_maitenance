@@ -13,9 +13,9 @@ def execute():
     """Main Execution"""
     config = ConfigReader()
     dbInput = checkConfigForDB(config)
-    dbBack = opentsdb(dbInput)
+    dbBackend = opentsdb(dbInput)
     if config.hasSection('compute'):
-        if config.hasOption('checks'):
+        if config.hasOption('compute', 'checks'):
             allChecks = config.getOption('compute', 'checks').split(',')
             print allChecks
 
