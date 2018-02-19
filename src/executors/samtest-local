@@ -10,10 +10,10 @@ class MyDaemon(Daemon):
             try:
                 print execute()
                 print 'Sleeping 5 minutes'
-                time.sleep(60)
+                time.sleep(600)
             except:
                 print 'Got exception...'
-                time.sleep(60)
+                time.sleep(600)
 
 if __name__ == "__main__":
     daemonName = 'samtest-local'
@@ -36,3 +36,5 @@ if __name__ == "__main__":
     else:
         print "usage: %s start|stop|status|restart" % sys.argv[0]
         sys.exit(2)
+
+# TODO. Allow to control timer how often...
