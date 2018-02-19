@@ -1,3 +1,4 @@
+#!/usr/bin/python
 def parseNumeric(inputDict, metricKey):
     out = {}
     for key, value in inputDict.items():

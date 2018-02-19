@@ -1,0 +1,2 @@
+from t2Mon.compute.computeSAM import execute
+execute()
