@@ -8,7 +8,8 @@ class ConfigReader(object):
 
     def __init__(self, location='/etc/t2_maitenance.conf'):
         self.configLocation = location
-        self.config = self.getConfig()
+        self.config = None
+        self.getConfig()
 
     def getConfig(self):
         """ Get parsed configuration """
