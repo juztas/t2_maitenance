@@ -7,14 +7,6 @@ import potsdb
 MAPPING = ['Hadoop:service=NameNode,name=JvmMetrics', 'java.lang:type=Threading', 'java.lang:type=OperatingSystem', 'Hadoop:service=NameNode,name=FSNamesystem',
            'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo']
 
-
-def sendMetrics(metrics, timestamp, parsedOut, extraTagVal1=None, extraTagVal2=None):
-    for key, value in parsedOut.items():
-        if extraTagVal1 and extraTagVal2:
-            metrics.send(key, value, timestamp=timestamp, extraTag1=extraTagVal1, nodestatus=extraTagVal2)
-        else:
-            metrics.send(key, value, timestamp=timestamp)
-
 def main(timestamp):
     """ Main method """
     out = gethdfsOut('http://10.3.10.66:50070/jmx')
@@ -76,7 +68,7 @@ def runTimer():
         totalRuntime = endTime - startTime
         print 'StartTime: %s, EndTime: %s, Runtime: %s' % (startTime, endTime, totalRuntime)
         if totalRuntime < 60:
-            time.sleep(int(60-totalRuntime))
+            time.sleep(int(60 - totalRuntime))
         else:
             time.sleep(1)
 

@@ -1,0 +1,83 @@
+#!/bin/bash
+#
+# usage : fetch-from-web URL Output-file
+#  output file must not exits
+#
+# exit code:
+#   0: CVS copy retrieved and copied to output-file
+#   1: command did not succeed
+#
+# Things that may fail:
+#   wrong arguments
+#   curl missing
+#   curl fails
+#  
+
+url=$1
+file=$2
+
+if [ -z "$url" -o -z "$file" ] ; then
+    exit 1
+fi
+
+# Look for curl
+source /cvmfs/cms.cern.ch/crab3/crab.sh
+if [ ! type -f curl > /dev/null 2>&1 ] ; then
+    echo "ERROR: cannot find curl"
+    exit 1
+fi
+
+ConfigFile=${CMS_PATH}/SITECONF/local/JobConfig/site-local-config.xml
+
+# Try to retrieve the CVS copy via Squid; if it fails, try without Squid
+squidUrl=`grep proxy $ConfigFile | head -1 | cut -d'"' -f 2`
+if [ -z $squidUrl ] ; then
+    useSquid=0
+    echo "WARNING: failed to find squidUrl in $ConfigFile"
+else
+    useSquid=1
+
+# squids at CERN, RAL and London, can only be used for FroNtier  
+    ( echo $squidUrl | grep -q 'cmst0frontier.*\.cern\.ch' ) && useSquid=0
+    ( echo $squidUrl | grep -q 'pp\.rl\.ac\.uk' ) && useSquid=0
+    ( echo $squidUrl | grep -q 'hep\.ph\.ic\.ac\.uk' ) && useSquid=0
+fi
+
+if [ $useSquid == 1 ] ; then
+    export http_proxy=$squidUrl
+    echo "http_proxy: ${http_proxy}"
+fi
+
+wgetOutput=`mktemp`
+cmd="wget --header=\"PRIVATE-TOKEN: 6STzvBkTLS7fqevzuehi\" -O $file $url"
+
+cmdFile=`mktemp`
+echo "$cmd > $wgetOutput 2>&1" > $cmdFile
+source $cmdFile
+rc=$?
+if [ $rc != 0 ] ; then
+    echo "wget error code: $rc"
+    cat $wgetOutput
+    if [ $useSquid == 0 ] ; then
+	echo "ERROR: Failed to retrieve $file from $url"
+    else
+	echo -n "WARNING: Failed to retrieve $file from $url. Trying without squid... "
+	unset http_proxy
+	source $cmdFile
+	rc=$?
+	if [ $rc != 0 ] ; then
+	    echo
+	    echo "ERROR: Failed to retrieve $file from $url without squid"
+	else
+	    rc=0
+	    echo "Succeeded!"
+	fi
+    fi
+fi
+rm -f $wgetOutput $cmdFile
+
+if [ $rc != 0 ] ; then
+    exit 1
+else
+    exit 0
+fi

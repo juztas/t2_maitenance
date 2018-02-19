@@ -13,13 +13,6 @@ q = Queue(maxsize=0)
 num_threads = 10
 results = []
 
-def sendMetrics(metrics, timestamp, parsedOut, extraTagVal1=None, extraTagVal2=None):
-    for key, value in parsedOut.items():
-        if extraTagVal1 and extraTagVal2:
-            metrics.send(key, value, timestamp=timestamp, extraTag1=extraTagVal1, nodestatus=extraTagVal2)
-        else:
-            metrics.send(key, value, timestamp=timestamp)
-
 def hdfsCaller(q, result):
     while True:
         inpDict = q.get()
