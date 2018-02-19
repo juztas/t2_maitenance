@@ -10,19 +10,6 @@ from t2Mon.common.database.opentsdb import opentsdb
 CURRENT_TIME = int(time.time())
 HOST = socket.gethostname()
 
-
-def getSTDOUT(instdout):
-    print "Normal"
-    std_lines = instdout.readlines()
-    for line in std_lines:
-        print line.rstrip()
-
-def getSTDERR(instderr):
-    print "Error"
-    stderr_lines = instderr.readlines()
-    for line in stderr_lines:
-        print line.rstrip()
-
 def appendOSEnviron():
     newEnv = os.environ.copy()
     newEnv['https_proxy'] = 'http://newman.ultralight.org:3128'
@@ -58,11 +45,9 @@ def execute():
                 key = check[:-3]  # Cut all not needed sh...
                 value = 3
                 newProc, newProcReturn = externalCommand('env', newEnv)
-                getSTDOUT(newProc[0])
-                getSTDERR(newProc[`])
+                # STDOUT newProc[0], STDERR newProc[1]
                 dbBackend.sendMetric('compute.status.%s' % key,
-                                     value, CURRENT_TIME,
-                                     {'myhost': HOST, 'cmsCheck': key, 'timestamp': CURRENT_TIME})
+                                     value, {'myhost': HOST, 'cmsCheck': key, 'timestamp': CURRENT_TIME})
             dbBackend.stopWriter()
 
 if __name__ == "__main__":
