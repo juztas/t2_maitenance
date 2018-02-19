@@ -11,7 +11,7 @@ def externalCommand(command, newEnv=None):
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=newEnv)
     else:
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return proc.communicate()
+    return proc.communicate(), proc.returncode
 
 def tryConvertToNumeric(value):
     floatVal = None
