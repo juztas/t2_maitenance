@@ -5,11 +5,9 @@ from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
 
 def checkConfigForDB(config):
-    dbInput = {}
     if config.hasSection('opentsdb'):
-        for option in config.getOptions('opentsdb'):
-            dbInput[option] = config.getOption('opentsdb', option)
-    return dbInput
+        return config.getOptions('opentsdb')
+    return {}
 
 def execute():
     """Main Execution"""

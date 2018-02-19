@@ -41,5 +41,5 @@ class ConfigReader(object):
     def getOptions(self, sectionName):
         """ Get all Options keys """
         if self.hasSection(sectionName):
-            return list(self.config.items(sectionName))
-        return []
+            return dict(self.config.items(sectionName))
+        return {}
