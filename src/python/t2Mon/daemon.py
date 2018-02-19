@@ -129,6 +129,8 @@ class Daemon(object):
             pidf.close()
         except IOError:
             pid = None
+            print 'Is application running?'
+            sys.exit(1)
 
     def restart(self):
         """
@@ -142,3 +144,6 @@ class Daemon(object):
         You should override this method when you subclass Daemon. It will be called after the process has been
         daemonized by start() or restart().
         """
+
+# START WILL FAIL IF LOG DIR IS NOT SET!!!
+

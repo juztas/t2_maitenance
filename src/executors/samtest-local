@@ -7,9 +7,13 @@ from t2Mon.daemon import Daemon
 class MyDaemon(Daemon):
     def run(self):
         while True:
-            print execute()
-            print 'Sleeping 5 minutes'
-            time.sleep(60)
+            try:
+                print execute()
+                print 'Sleeping 5 minutes'
+                time.sleep(60)
+            except:
+                print 'Got exception...'
+                time.sleep(60)
 
 if __name__ == "__main__":
     daemonName = 'samtest-local'
