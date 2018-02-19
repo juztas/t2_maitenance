@@ -125,6 +125,7 @@ class Daemon(object):
         try:
             pidf = file(self.pidfile, 'r')
             pid = int(pidf.read().strip())
+            print 'PID %s' % pid
             pidf.close()
         except IOError:
             pid = None
