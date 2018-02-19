@@ -11,5 +11,5 @@ setup(name='t2Mon',
       install_requires=['potsdb', 'psutil'],
       package_dir={'': 'src/python/'},
       data_files=[('/etc/', ['packaging/t2_maitenance.conf'])],
-      scripts=["src/samtest-local"]
+      scripts=["src/executors/samtest-local"]
      )
