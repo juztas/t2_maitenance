@@ -58,7 +58,7 @@ def execute():
                 shutil.copytree(newEnv['SAM_TEST_LOCATION'], newEnv['SAME_SENSOR_HOME'])
                 # Execute all Checks, but before, we need to export few things
                 # And send all metrics. after we done, close metrics sender.
-                lowestReturn = 3  # 3 means that everything is ok
+                averageStatus = 0  # 3 means that everything is ok
                 for check in allChecks:
                     print check
                     startTimer = int(time.time())
@@ -66,6 +66,7 @@ def execute():
                     key = check[:-3]  # Cut all not needed sh...
                     newProc, newProcReturn = externalCommand(scriptLocation, newEnv)
                     endTimer = int(time.time())
+                    averageStatus += newProcReturn
                     if newProcReturn != 3:
                         with open('%s-logstdout' % scriptLocation, 'w') as fd:
                             fd.write(newProc[0])
@@ -73,15 +74,12 @@ def execute():
                             fd.write(newProc[1])
                     # STDOUT newProc[0], STDERR newProc[1]
                     print check, newProcReturn
-                    # If newProcReturn is not 3, save stdout, stderr
-                    if newProcReturn < lowestReturn:
-                        lowestReturn = newProcReturn
                     dbBackend.sendMetric('compute.status.%s' % key,
                                          newProcReturn, {'myhost': HOST, 'cmsCheck': key, 'timestamp': CURRENT_TIME})
                     dbBackend.sendMetric('compute.status.runtime.%s' % key,
                                          int(endTimer - startTimer), {'myhost': HOST, 'cmsCheck': key, 'timestamp': CURRENT_TIME})
                 dbBackend.sendMetric('compute.status.overall',
-                                     lowestReturn, {'myhost': HOST, 'cmsCheck': 'overall', 'timestamp': CURRENT_TIME})
+                                     float(averageStatus/len(allChecks)), {'myhost': HOST, 'cmsCheck': 'overall', 'timestamp': CURRENT_TIME})
                 dbBackend.stopWriter()
     except:
         print 'Total Failure'
