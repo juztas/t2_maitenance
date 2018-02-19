@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import os
 import sys
 import subprocess
@@ -10,17 +11,17 @@ NOW = int(time.time())
 # Check that environmental variable SAME_OK is set
 #
 if "SAME_OK" not in os.environ.keys():
-    print "test_squid.py: Error. SAME_OK not defined"
+    print "Error. SAME_OK not defined"
     sys.exit(1)
 SAME_OK = int(os.environ["SAME_OK"])
 
 if "SAME_ERROR" not in  os.environ.keys():
-    print "test_squid.py: Error. SAME_ERROR not defined"
+    print "Error. SAME_ERROR not defined"
     sys.exit(1)
 SAME_ERROR = int(os.environ["SAME_ERROR"])
 
 if "SAME_WARNING" not in  os.environ.keys():
-    print "test_squid.py: Error. SAME_WARNING not defined"
+    print "Error. SAME_WARNING not defined"
     sys.exit(1)
 SAME_WARNING = int(os.environ["SAME_WARNING"])
 
