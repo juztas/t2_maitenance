@@ -1,0 +1,237 @@
+#!/bin/sh
+
+# Copyright (c) Members of the EGEE Collaboration. 2008.
+# See http://www.eu-egee.org/partners/ for details on the copyright
+# holders.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: David Groep
+#      NIKHEF Amsterdam, the Netherlands
+#      grid-mw-security@nikhef.nl
+#
+# @(#)$Id: mkgltempdir,v 1.1 2012/04/02 16:09:33 asciaba Exp $
+#
+
+version=0.0.2
+
+glexec=${OSG_GLEXEC_LOCATION:-${GLEXEC_LOCATION:-${GLITE_LOCATION:-/usr}}/sbin/glexec}
+#glexec=${GLEXEC_LOCATION:-${GLITE_LOCATION:-/usr}}/sbin/glexec
+export PATH=$PATH:/bin:/usr/bin
+mktemp=`which mktemp`
+chmod=`which chmod`
+basename=`which basename`
+id=`which id`
+sed=`which sed`
+awk=`which awk`
+rm=`which rm`
+rmdir=`which rmdir`
+
+error() {
+  echo "$@" >&2
+  exit 1;
+}
+
+warn() {
+  echo "$@" >&2 ;
+}
+
+help() {
+  progname=`$basename $0`
+  cat <<EOF
+Usage: $progname [-h] [-r [-f] gltmp_directory] 
+        [-t targetdir-mode] [-m parentmode] [directory]
+
+Create a directory owned by the glexec target user in a secure fashion.
+The path of the directory created is printed to stdout.
+
+  -h                   print this help text
+  -t targetdir-mode    permissions of the target directory created
+                       (default: 0700, i.e. unreadable by the glexec invoker)
+  -m parentmode        permissions for the current user on the parent tree
+                       (default: 0755, and should traversable for target uid)
+  -r gltmp_dir         remove the target directory previously created by
+                       $progname. Directory must be empty, unless -f 
+                       is also specified.
+  -f                   force removal of target directory, see above under -r
+  -v                   print version number
+
+  directory            base directory in which target directory is created
+                       (default: current value of \$TMPDIR or, if unset, /tmp)
+
+Return value is 0 if directory was successfully created, non-zero otherwise.
+
+EOF
+  exit 0;
+}
+
+######################################################################
+# removal support
+forceremove=0
+
+remove() {
+  test -e "$1" || error "$0 (remove): $1: does not exist"
+  test -d "$1" || error "$0 (remove): $1: not a directory"
+
+  test `expr substr "$1" 1 1` != "/" && error \
+    "$0 (remove): $1: must be an absolute path"
+
+  test `expr match "$1" '.*/\.\./'` -ne 0 && error \
+    "$0 (remove): $1: contains disallowed parent directory designator"
+
+  # determine uid (name) in a portable way (-u and -n are gnu-isms)
+  uid=`$id | $sed -e 's/uid=[0-9][0-9]*(\([a-zA-Z0-9]*\)).*/\1/'`
+
+  # a gltmpdir directory is at least three levels deep and the two
+  # upper directories are owned by this user and have only one entry
+
+  gltmpdir="$1"
+  stickydir=`dirname "$gltmpdir"`
+  securedir=`dirname "$stickydir"`
+  
+  test "$securedir" = "/" && error \
+    "Path depth error: $gltmpdir not deep enough, not a mkgltmpdir result"
+  test `ls -ld $gltmpdir | $awk '{print $3}'` = "$uid" && error \
+    "Directory $gltmpdir is already owned by $uid"
+  test `ls -1 "$stickydir" | wc -l` -ne 1 && error \
+    "Compliance error: $stickydir has multiple entries"
+  test `ls -ld $stickydir | $awk '{print $3}'` != "$uid" && error \
+    "Directory $stickydir not owner by $uid"
+  test `ls -1 "$securedir" | wc -l` -ne 1 && error \
+    "Compliance error: $securedir has multiple entries"
+  test `ls -ld $securedir | $awk '{print $3}'` != "$uid" && error \
+    "Directory $securedir not owner by $uid"
+  
+  $chmod 0711 $securedir || error \
+    "Cannot chmod $securedir to 0711"
+  $chmod 01777 $stickydir || error \
+    "Cannot chmod $stickydir to 01777"
+
+  if test "$forceremove" -eq 1 
+  then
+    $glexec $rm -fr $gltmpdir
+  else
+    $glexec $rmdir $gltmpdir
+  fi
+
+  test -d $gltmpdir && error \
+    "Failed to remove $gltmpdir, sorry. Exiting."
+
+  $rmdir $stickydir || error "Cannot remove $stickydir, exiting."
+  $rmdir $securedir || error "Cannot remove $securedir, exiting."
+
+  return 0;
+}
+
+######################################################################
+# parse arguments
+#
+while :; do
+  case "$1" in
+  -h ) help ; exit 0 ;;
+  -m ) if [ -n "$2" ];then
+	    MODE=0"$2"; shift 2
+       else
+	   error "Option -m needs an argument" ; break
+       fi ;;
+  -t ) if [ -n "$2" ];then
+	    tmode=0"$2"; shift 2
+       else
+	   error "Option -t needs an argument" ; break
+       fi ;;
+  -r ) if [ -n "$2" ];then
+	    remove="$2" ; shift 2
+       else
+	   error "Option -r needs an argument" ; break
+       fi ;;
+  -f ) forceremove=1 ; shift ;;
+  -v ) echo "`$basename $0` version: $version" ; exit 0 ;;
+  -- ) shift ; break ;;
+  -* ) error "Cannot parse option $1" ; break ;;
+  * ) break ;;
+  esac
+done
+# invoke removal of directory
+test "$remove" && { remove "$remove" ; exit $?; }
+
+case "$#" in
+1 )	TMPDIR="$1" ;;
+esac
+
+######################################################################
+# creating a temporary directory owned by the target uid with 
+# mask $tmode
+#
+
+# set defaults
+TMPDIR=${TMPDIR:-/tmp}
+MODE=${MODE:-0755}
+umask 0077
+
+cd $TMPDIR || error "Cannot chdir to \"$TMPDIR\""
+
+# create private temporary WD and return its name
+securedir=`$mktemp -d "$TMPDIR/gltmpdir.$$.XXXX"` || \
+    error "Cannot create secured directory at $TMPDIR"
+# this should be superfluous given the 0077 umask, but do it anyway
+$chmod 0700 "$securedir"
+
+# make world-writable sticky directory below this one for the target uid
+stickydir=`$mktemp -d "$securedir/XXXX"` || {
+    $rmdir -f "$securedir"
+    error "Cannot create world-writable sticky directory in the secure area"
+}
+$chmod 1777 "$stickydir" || {
+    $rmdir "$stickydir" && $rmdir "$securedir"
+    error "Cannot chmod sticky directory"
+}
+
+# Setup tmpdir permissions
+opwd=$(pwd)
+while [ $(pwd) != / ];do
+    $chmod a+x . 2> /dev/null || break
+    cd ..
+done
+cd $opwd
+
+# Temporarily open securedir such that mktemp can reach it
+$chmod 0711 "$securedir"
+targetdir=`$glexec $mktemp -d $stickydir/XXXX`
+rc=$?
+# Close it again
+$chmod 0700 "$securedir"
+
+test "$rc" -ne 0 && {
+	warn "Cannot create target uid temporary directory: $rc"
+	$rmdir "$stickydir"
+	$rmdir "$securedir"
+	error "Cleanup attempted, exiting."
+}
+
+test "$tmode" && {
+	cd "$stickydir"
+	$glexec $chmod $tmode "$targetdir"
+	rc=$?
+	cd ../..
+	test $rc -ne 0 && {
+		warn "Cannot set target mode $tmode for $targetdir: $rc"
+		$rmdir "$stickydir"
+		$rmdir "$securedir"
+		error "Cleanup attempted, exiting."
+	}
+}
+
+$chmod $MODE "$stickydir"
+$chmod $MODE "$securedir"
+
+echo "$targetdir"
