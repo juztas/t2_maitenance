@@ -9,18 +9,17 @@ from t2Mon.common.Utilities import externalCommand
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
 
-CURRENT_TIME = int(time.time())
 HOST = socket.gethostname()
-NOW = datetime.datetime.now()
 
 def appendOSEnviron(config):
+    now = datetime.datetime.now()
     newEnv = os.environ.copy()
     if config.hasOption('main', 'https_proxy'):
         newEnv['https_proxy'] = config.getOption('main', 'https_proxy')
     if config.hasOption('main', 'http_proxy'):
         newEnv['http_proxy'] = config.getOption('main', 'https_proxy')
     if config.hasOption('main', 'wn_home_dir'):
-        newEnv['SAME_SENSOR_HOME'] = '%s/%s/%s/%s/%s/%s' % (config.getOption('main', 'wn_home_dir'), NOW.year, NOW.month, NOW.day, NOW.hour, NOW.minute)
+        newEnv['SAME_SENSOR_HOME'] = '%s/%s/%s/%s/%s/%s' % (config.getOption('main', 'wn_home_dir'), now.year, now.month, now.day, now.hour, now.minute)
     else:
         raise Exception("wn_home_dir must be set")
     if config.hasOption('main', 'x509_proxy'):
@@ -45,6 +44,7 @@ def checkConfigForDB(config):
 
 def execute():
     """Main Execution"""
+    CURRENT_TIME = int(time.time())
     config = ConfigReader()
     dbInput = checkConfigForDB(config)
     dbBackend = opentsdb(dbInput)
