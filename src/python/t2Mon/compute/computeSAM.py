@@ -67,6 +67,7 @@ def execute():
                     newProc, newProcReturn = externalCommand(scriptLocation, newEnv)
                     endTimer = int(time.time())
                     # STDOUT newProc[0], STDERR newProc[1]
+                    print check, newProcReturn
                     # If newProcReturn is not 3, save stdout, stderr
                     if newProcReturn < lowestReturn:
                         lowestReturn = newProcReturn
