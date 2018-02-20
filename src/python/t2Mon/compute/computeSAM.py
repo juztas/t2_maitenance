@@ -33,7 +33,7 @@ def appendOSEnviron(config):
         raise Exception("sam_tests location is not set. I will not know what to run")
     newEnv['SAME_ERROR'] = '1'
     newEnv['SAME_WARNING'] = '2'
-    newEnv['SAM_OK'] = '3'
+    newEnv['SAME_OK'] = '3'
     newEnv['SAME_NODATA'] = '0'
     newEnv['SAME_UNKNOWN'] = '0'
     return newEnv
