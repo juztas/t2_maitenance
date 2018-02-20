@@ -65,8 +65,10 @@ def execute():
                     if newProcReturn != 3:
                         with open('%s-logstdout' % scriptLocation, 'w') as fd:
                             fd.write(newProc[0])
+                            fd.write('Process exited: %s' % newProcReturn)
                         with open('%s-logstderr' % scriptLocation, 'w') as fd:
                             fd.write(newProc[1])
+                            fd.write('Process exited: %s' % newProcReturn)
                     # STDOUT newProc[0], STDERR newProc[1]
                     print check, newProcReturn
                     dbBackend.sendMetric('compute.status.%s' % key,
