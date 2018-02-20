@@ -41,6 +41,11 @@ def getItemPos(item, inList):
             return i
     return -1
 
+def checkConfigForDB(config):
+    if config.hasSection('opentsdb'):
+        return config.getOptions('opentsdb')
+    return {}
+
 # 
 # def getProcInfo(procPID):
 #     procS = psutil.Process(int(procPID))

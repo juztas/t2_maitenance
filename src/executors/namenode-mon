@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import time
-from t2Mon.compute.computeSAM import execute
+from t2Mon.hdfs.namenode import execute
 from t2Mon.daemon import Daemon
 
 class MyDaemon(Daemon):
@@ -15,7 +15,7 @@ class MyDaemon(Daemon):
             time.sleep(int(sleepTime))
 
 if __name__ == "__main__":
-    daemonName = 'samtest-local'
+    daemonName = 'namenode-mon'
     daemon =  MyDaemon('/tmp/daemon-%s.pid' % daemonName,
                        stdout='/var/log/t2Mon/%s/std.out' % daemonName,
                        stderr='/var/log/t2Mon/%s/std.err' % daemonName)

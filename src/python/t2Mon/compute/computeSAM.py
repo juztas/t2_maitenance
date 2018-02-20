@@ -7,6 +7,7 @@ import datetime
 import socket
 from t2Mon.common.Utilities import externalCommand
 from t2Mon.common.configReader import ConfigReader
+from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.database.opentsdb import opentsdb
 
 HOST = socket.gethostname()
@@ -37,11 +38,6 @@ def appendOSEnviron(config):
     newEnv['SAME_UNKNOWN'] = '0'
     return newEnv
 
-def checkConfigForDB(config):
-    if config.hasSection('opentsdb'):
-        return config.getOptions('opentsdb')
-    return {}
-
 def execute():
     """Main Execution"""
     CURRENT_TIME = int(time.time())
@@ -54,7 +50,6 @@ def execute():
                 newEnv = appendOSEnviron(config)
                 allChecks = config.getOption('compute', 'checks').split(',')
                 # Copy subtree
-                # TODO: Also calculate and publish runtime of each metric
                 shutil.copytree(newEnv['SAM_TEST_LOCATION'], newEnv['SAME_SENSOR_HOME'])
                 # Execute all Checks, but before, we need to export few things
                 # And send all metrics. after we done, close metrics sender.

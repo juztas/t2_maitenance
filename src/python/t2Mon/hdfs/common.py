@@ -1,4 +1,7 @@
 #!/usr/bin/python
+import json
+import subprocess
+
 def parseNumeric(inputDict, metricKey):
     out = {}
     for key, value in inputDict.items():
@@ -19,7 +22,6 @@ def getUniqKey(typeName):
         return typeName.split('name=')[-1:][0]
     else:
         return typeName.split('type=')[-1:][0]
-
 
 def gethdfsOut(url):
     command = "curl '%s'" % (url)
