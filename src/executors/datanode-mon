@@ -24,12 +24,14 @@ if __name__ == "__main__":
             if len(sys.argv) != 3:
                 print 'Usage: %s start runTimer' % sys.argv[0]
                 sys.exit(2)
-            daemon.start(sys.argv[3])
+            daemon.start(sys.argv[2])
         elif sys.argv[1] == 'stop':
             daemon.stop()
         elif sys.argv[1] == 'restart':
-            print 'Usage: %s start runTimer' % sys.argv[0]
-            daemon.restart(sys.argv[3])
+            if len(sys.argv) != 3:
+                print 'Usage: %s restart runTimer' % sys.argv[0]
+                sys.exit(2)
+            daemon.restart(sys.argv[2])
         elif sys.argv[1] == 'status':
             daemon.status()
         else:
