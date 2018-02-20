@@ -7,6 +7,7 @@ from t2Mon.daemon import Daemon
 class MyDaemon(Daemon):
     def run(self, runTimer):
         while True:
+            runTimer = int(runTimer)
             startTime = int(time.time())
             execute()
             endTime = int(time.time())
