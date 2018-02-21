@@ -27,6 +27,7 @@ def hdfsCaller(q, result):
                     result.append({'nodeName': inpDict['nodeName'], 'failedVolumes': item['NumFailedVolumes']})
         else:
             print 'Failed to get node info from %s' % inpDict['nodeName']
+            result.append({'nodeName': inpDict['nodeName'], 'failedVolumes': item['NumFailedVolumes'], 'failedtoRetrieve': 1})
         q.task_done()
 
 
@@ -45,6 +46,10 @@ def main(timestamp, config, dbBackend):
                 dbBackend.sendMetric('hadoop.datanode.failedvolumes', element['failedVolumes'],
                                      {'timestamp': timestamp, 'datanode': element['nodeName'],
                                       'haveFailed': 'Yes' if element['failedVolumes'] else 'No'})
+                if 'failedtoRetrieve' in element.keys():
+                    dbBackend.sendMetric('hadoop.datanode.failedtoRetrieve', element['failedtoRetrieve'],
+                                         {'timestamp': timestamp, 'datanode': element['nodeName'],
+                                          'failedtoRetrieve': element['failedtoRetrieve']})
                 del results[incr]
             print results
     return
