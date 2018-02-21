@@ -23,10 +23,12 @@ def main(timestamp, config, dbBackend):
             parsedOut = parseNumeric(item, uniqKey)
             for key, value in parsedOut.items():
                 dbBackend.sendMetric(key, value, {'timestamp': timestamp})
+            totalNodes = 0
             for nodeKey, nodeVal in {'LiveNodes': 0, 'DeadNodes': 1, 'DecomNodes': 2}.items():
                 if nodeKey in item:
                     nodeInfo = json.loads(item[nodeKey])
                     parsedOut = {}
+                    totalNodes += len(nodeInfo)
                     dbBackend.sendMetric('hadoop.nodestatus.%s' % nodeKey, len(nodeInfo), {'timestamp': timestamp})
                     for nodeName, nodeDict in nodeInfo.items():
                         nodeDict['statusofNode'] = nodeVal
@@ -37,7 +39,7 @@ def main(timestamp, config, dbBackend):
                                                               'nodeKey': nodeKey})
                 else:
                     dbBackend.sendMetric('hadoop.nodestatus.%s' % nodeKey, 0, {'timestamp': timestamp})
-
+            dbBackend.sendMetric('hadoop.nodestatus.totalnodes', totalNodes, {'timestamp': timestamp})
 
 def getDirStats(directory):
     hdfs_cmd = "hadoop fs -du %s" % directory
