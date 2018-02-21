@@ -17,19 +17,19 @@ MAPPING = ['Hadoop:service=NameNode,name=JvmMetrics', 'java.lang:type=Threading'
 def main(timestamp, config, dbBackend):
     """ Main method """
     out = gethdfsOut('http://%s:50070/jmx' % config.getOption('hdfs', 'namenode'))
+    totalNodes = {'totalnodes': 0, 'livenodes': 0, 'deadnodes': 0, 'decomnodes': 0}
     for item in out['beans']:
         if item['name'] in MAPPING:
             uniqKey = getUniqKey(item['name'])
             parsedOut = parseNumeric(item, uniqKey)
             for key, value in parsedOut.items():
                 dbBackend.sendMetric(key, value, {'timestamp': timestamp})
-            totalNodes = 0
             for nodeKey, nodeVal in {'LiveNodes': 0, 'DeadNodes': 1, 'DecomNodes': 2}.items():
                 if nodeKey in item:
                     nodeInfo = json.loads(item[nodeKey])
                     parsedOut = {}
-                    totalNodes += len(nodeInfo)
-                    dbBackend.sendMetric('hadoop.nodestatus.%s' % nodeKey, len(nodeInfo), {'timestamp': timestamp})
+                    totalNodes[nodeKey.lower()] += len(nodeInfo)
+                    totalNodes['totalnodes'] += len(nodeInfo)
                     for nodeName, nodeDict in nodeInfo.items():
                         nodeDict['statusofNode'] = nodeVal
                         parsedOut = appender(nodeDict, 'nodestatus')
@@ -37,9 +37,8 @@ def main(timestamp, config, dbBackend):
                             dbBackend.sendMetric(key, value, {'timestamp': timestamp,
                                                               'nodeName': nodeName,
                                                               'nodeKey': nodeKey})
-                else:
-                    dbBackend.sendMetric('hadoop.nodestatus.%s' % nodeKey, 0, {'timestamp': timestamp})
-            dbBackend.sendMetric('hadoop.nodestatus.totalnodes', totalNodes, {'timestamp': timestamp})
+    for key, value in totalNodes.items():
+        dbBackend.sendMetric('hadoop.nodestatus.%s' % key, value, {'timestamp': timestamp})
 
 def getDirStats(directory):
     hdfs_cmd = "hadoop fs -du %s" % directory
