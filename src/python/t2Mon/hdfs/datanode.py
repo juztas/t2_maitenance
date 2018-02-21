@@ -27,7 +27,7 @@ def hdfsCaller(q, result):
                     result.append({'nodeName': inpDict['nodeName'], 'failedVolumes': item['NumFailedVolumes']})
         else:
             print 'Failed to get node info from %s' % inpDict['nodeName']
-            result.append({'nodeName': inpDict['nodeName'], 'failedVolumes': item['NumFailedVolumes'], 'failedtoRetrieve': 1})
+            result.append({'nodeName': inpDict['nodeName'], 'failedVolumes': 0, 'failedtoRetrieve': 1})
         q.task_done()
 
 
