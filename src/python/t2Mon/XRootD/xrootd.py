@@ -1,12 +1,12 @@
-import sys, time
-import psutil
+import sys
+import time
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
 from t2Mon.common.Utilities import externalCommand
 from t2Mon.common.Utilities import run_pipe_cmd
 from t2Mon.common.Utilities import getItemPos
-from t2Mon.common.Utilities import getProcInfo
+from t2Mon.common.procInfo import getProcInfo
 
 def get():
     """Get memory info from /proc/meminfo"""
