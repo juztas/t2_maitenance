@@ -175,7 +175,7 @@ if [ -d $SW_DIR ] ; then
 fi
 
 # Check for free space on current directory and /tmp
-space=`check_df .`
+space=`check_df $SAME_SENSOR_HOME`
 echo "WorkDirSpace: $space MB"
 if [ $space -lt 10000 ] ; then
     echo "WARNING: less than 10 GB of free space in working directory"

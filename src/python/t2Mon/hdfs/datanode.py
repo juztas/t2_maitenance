@@ -43,11 +43,11 @@ def main(timestamp, config, dbBackend):
             for incr in xrange(len(results) - 1, -1, -1):
                 element = results[incr]
                 dbBackend.sendMetric('hadoop.datanode.failedvolumes', element['failedVolumes'],
-                                    {'timestamp': timestamp, 'datanode': element['nodeName'],
-                                     'haveFailed': 'Yes' if element['failedVolumes'] else 'No'})
+                                     {'timestamp': timestamp, 'datanode': element['nodeName'],
+                                      'haveFailed': 'Yes' if element['failedVolumes'] else 'No'})
                 del results[incr]
-            dbBackend.stopWriter()
             print results
+    return
 
 def execute():
     config = ConfigReader()
@@ -56,6 +56,7 @@ def execute():
     startTime = int(time.time())
     print 'Running Main'
     main(startTime, config, dbBackend)
+    dbBackend.stopWriter()
 
 
 for i in range(num_threads):
