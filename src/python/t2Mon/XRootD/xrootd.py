@@ -1,8 +1,9 @@
 import sys, time
 import psutil
-from t2Mon.daemon import Daemon
+from t2Mon.common.Utilities import checkConfigForDB
+from t2Mon.common.configReader import ConfigReader
+from t2Mon.common.database.opentsdb import opentsdb
 from t2Mon.common.Utilities import externalCommand
-from t2Mon.common.Utilities import tryConvertToNumeric
 from t2Mon.common.Utilities import run_pipe_cmd
 from t2Mon.common.Utilities import getItemPos
 from t2Mon.common.Utilities import getProcInfo
@@ -43,11 +44,15 @@ def get():
                     vals.append(True)
     return itemOut
 
-class MyDaemon(Daemon):
-    def run(self):
-        while True:
-            print get()
-            time.sleep(100)
+def execute():
+    config = ConfigReader()
+    dbInput = checkConfigForDB(config)
+    dbBackend = opentsdb(dbInput)
+    startTime = int(time.time())
+    print 'Running Main'
+    #main(startTime, config, dbBackend)
+    get()
+    dbBackend.stopWriter()
 
 if __name__ == "__main__":
     print get()
