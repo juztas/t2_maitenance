@@ -27,6 +27,7 @@ def main(timestamp, config, dbBackend):
                 if nodeKey in item:
                     nodeInfo = json.loads(item[nodeKey])
                     parsedOut = {}
+                    dbBackend.sendMetric('hadoop.nodestatus.%s' % nodeKey, len(nodeInfo), {'timestamp': timestamp})
                     for nodeName, nodeDict in nodeInfo.items():
                         nodeDict['statusofNode'] = nodeVal
                         parsedOut = appender(nodeDict, 'nodestatus')
@@ -34,6 +35,8 @@ def main(timestamp, config, dbBackend):
                             dbBackend.sendMetric(key, value, {'timestamp': timestamp,
                                                               'nodeName': nodeName,
                                                               'nodeKey': nodeKey})
+                else:
+                    dbBackend.sendMetric('hadoop.nodestatus.%s' % nodeKey, 0, {'timestamp': timestamp})
 
 
 def getDirStats(directory):
