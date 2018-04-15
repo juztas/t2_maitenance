@@ -64,7 +64,7 @@ def main(startTime, config, dbBackend):
         dbBackend.sendMetric('gridftp.status.connOutside', connCount, {'timestamp': startTime})
     if config.hasoption('main', 'my_private_ip'):
         connCount = getConnections(config.getoption('main', 'my_private_ip'))
-        dbBackend.sendMetric('gridftp.status.connOutside', connCount, {'timestamp': startTime})
+        dbBackend.sendMetric('gridftp.status.connPrivate', connCount, {'timestamp': startTime})
     return
 
 def execute():
