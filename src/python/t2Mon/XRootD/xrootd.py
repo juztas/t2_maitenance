@@ -33,15 +33,6 @@ def get():
         tmpOut = externalCommand('cat %s' % fileName)
         itemOut[pids[counter]] = getProcInfo(pids[counter])
         itemOut[pids[counter]]['Config'] = {}
-        for item in tmpOut:
-            for desc in item.split('\n'):
-                if desc.startswith('#'):
-                    continue
-                if not desc:
-                    continue
-                vals = desc.split(' ', 1)
-                if len(vals) == 1:
-                    vals.append(True)
     return itemOut
 
 def execute():

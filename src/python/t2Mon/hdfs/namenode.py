@@ -31,6 +31,8 @@ def main(timestamp, config, dbBackend):
                     totalNodes[nodeKey.lower()] += len(nodeInfo)
                     totalNodes['totalnodes'] += len(nodeInfo)
                     for nodeName, nodeDict in nodeInfo.items():
+                        if 'decommissioned' in nodeDict.keys() and nodeDict['decommissioned']:
+                            continue
                         nodeDict['statusofNode'] = nodeVal
                         parsedOut = appender(nodeDict, 'nodestatus')
                         for key, value in parsedOut.items():
