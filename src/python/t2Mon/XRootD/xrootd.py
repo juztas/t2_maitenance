@@ -20,6 +20,21 @@ XROOTD_FILES = ['/var/log/xrootd/xrootd.log',
                 '/var/log/xrootd/4/xrootd.log',
                 '/var/log/xrootd/clustered/xrootd.log']
 
+CONNECTIONS = "netstat -tuplna | grep xrootd | grep tcp | grep %s"
+# TODO for future;
+# Grep out Transfer stats and ip information. Also it shows the time for the transfer and also how many bytes were transferred.
+
+def getConnections(inputIP):
+    count = 0
+    fd = NamedTemporaryFile(delete=False)
+    fd.close()
+    os.system("%s &> %s" % (CONNECTIONS % (inputIP, fd.name)))
+    with open(fd.name, 'r') as fd1:
+        for line in fd1.readlines():
+            count += 1
+    os.unlink(fd.name)
+    return count
+
 
 def main(startTime, config, dbBackend):
     """ """
@@ -43,12 +58,21 @@ def main(startTime, config, dbBackend):
                             splLine = line.split()
                             out[inType].setdefault(splLine[2], 0)
                             out[inType][splLine[2]] += 1
-
-    for item, value in out['login'].items():
-        dbBackend.sendMetric('xrootd.status.logins', value, {'timestamp': startTime, 'statuskey': item})
-    for item, value in out['disc'].items():
-        dbBackend.sendMetric('xrootd.status.discon', value, {'timestamp': startTime, 'statuskey': item})
+        os.unlink(fd.name)
     print out
+    if out['login']:
+        for item, value in out['login'].items():
+            dbBackend.sendMetric('xrootd.status.logins', value, {'timestamp': startTime, 'statuskey': item})
+    if out['disc']:
+        for item, value in out['disc'].items():
+            dbBackend.sendMetric('xrootd.status.discon', value, {'timestamp': startTime, 'statuskey': item})
+    print out
+    if config.hasoption('main', 'my_public_ip'):
+        connCount = getConnections(config.getoption('main', 'my_public_ip'))
+        dbBackend.sendMetric('xrootd.status.connOutside', connCount, {'timestamp': startTime})
+    if config.hasoption('main', 'my_private_ip'):
+        connCount = getConnections(config.getoption('main', 'my_private_ip'))
+        dbBackend.sendMetric('xrootd.status.connPrivate', connCount, {'timestamp': startTime})
     return
 
 def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):

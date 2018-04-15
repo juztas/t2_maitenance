@@ -13,8 +13,22 @@ from t2Mon.common.database.opentsdb import opentsdb
 COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $13 \" \" 0}'",
             "success": "grep 'ended with rc' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $15}'",
             "users": "grep 'successfully authorized.' /var/log/gridftp-auth.log | grep ':: User' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $9}'"}
+
+CONNECTIONS = "netstat -tuplna | grep globus-gridf | grep tcp | grep %s"
 # TODO for future;
 # Grep out Transfer stats and ip information. Also it shows the time for the transfer and also how many bytes were transferred.
+
+def getConnections(inputIP):
+    count = 0
+    fd = NamedTemporaryFile(delete=False)
+    fd.close()
+    os.system("%s &> %s" % (CONNECTIONS % (inputIP, fd.name)))
+    with open(fd.name, 'r') as fd1:
+        for line in fd1.readlines():
+            count += 1
+    os.unlink(fd.name)
+    return count
+
 
 def main(startTime, config, dbBackend):
     """ """
@@ -34,23 +48,24 @@ def main(startTime, config, dbBackend):
                     splLine = line.split()
                     out[inType].setdefault(splLine[2], 0)
                     out[inType][splLine[2]] += 1
+        os.unlink(fd.name)
     print out
-    out['success']['0'] -= out['exclude']['0']
-    for item, value in out['success'].items():
-        dbBackend.sendMetric('gridftp.status.transferStatus', value, {'timestamp': startTime, 'statuskey': item})
-    for item, value in out['users'].items():
-        dbBackend.sendMetric('gridftp.status.authorize', value, {'timestamp': startTime, 'statuskey': item})
+    if out['success'] and out['exclude']:
+        out['success']['0'] -= out['exclude']['0']
+    if out['success']:
+        for item, value in out['success'].items():
+            dbBackend.sendMetric('gridftp.status.transferStatus', value, {'timestamp': startTime, 'statuskey': item})
+    if out['users']:
+        for item, value in out['users'].items():
+            dbBackend.sendMetric('gridftp.status.authorize', value, {'timestamp': startTime, 'statuskey': item})
     print out
+    if config.hasoption('main', 'my_public_ip'):
+        connCount = getConnections(config.getoption('main', 'my_public_ip'))
+        dbBackend.sendMetric('gridftp.status.connOutside', connCount, {'timestamp': startTime})
+    if config.hasoption('main', 'my_private_ip'):
+        connCount = getConnections(config.getoption('main', 'my_private_ip'))
+        dbBackend.sendMetric('gridftp.status.connOutside', connCount, {'timestamp': startTime})
     return
-
-def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):
-    for item in allData:
-        if not item:
-            continue
-        tmpI = item.split()
-        size = int(tmpI[0].strip())
-        fullPath = tmpI[1].strip()[cutFirst:]
-        dbBackend.sendMetric(startKey, size, {'timestamp': timestamp, 'statKey': fullPath})
 
 def execute():
     config = ConfigReader()
