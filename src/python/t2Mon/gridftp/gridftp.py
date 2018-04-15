@@ -1,65 +1,68 @@
-import sys, time
-import psutil
-from t2Mon.daemon import Daemon
+#!/usr/bin/python
+import os
+import json
+import subprocess
+import time
+import datetime
+from tempfile import NamedTemporaryFile
 from t2Mon.common.Utilities import externalCommand
-from t2Mon.common.Utilities import tryConvertToNumeric
-from t2Mon.common.Utilities import run_pipe_cmd
-from t2Mon.common.Utilities import getItemPos
-from t2Mon.common.Utilities import getProcInfo
+from t2Mon.common.Utilities import checkConfigForDB
+from t2Mon.common.configReader import ConfigReader
+from t2Mon.common.database.opentsdb import opentsdb
 
-IGNORE_USERS = ['root']
+COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $13 \" \" 0}'",
+            "success": "grep 'ended with rc' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $15}'",
+            "users": "grep 'successfully authorized.' /var/log/gridftp-auth.log | grep ':: User' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $9}'"}
+# TODO for future;
+# Grep out Transfer stats and ip information. Also it shows the time for the transfer and also how many bytes were transferred.
 
-def get():
-    """Get memory info from /proc/meminfo"""
-    memInfo = {}
-    tmpOut = externalCommand('cat /etc/gridftp.conf')
-    for item in tmpOut:
-        for desc in item.split('\n'):
-            if desc.startswith('#'):
-                continue
-            if not desc:
-                continue
-            vals = desc.split(' ', 1)
-            if len(vals) == 2:
-                # We strip it to remove white spaces and split to remove kb in the end
-                value = vals[1].strip().split(' ')
-                name = vals[0].strip()
-                if name.startswith('log_'):
-                    continue
-                if len(value) == 2:
-                    name += "_%s" % value[1]
-                memInfo[name] = tryConvertToNumeric(value[0])
-            else:
-                print 'MemInfo: Skipped this item: ', vals
-    # Get current running statistics
-    tmpOut = run_pipe_cmd('ps auxf', 'grep globus-gridftp-server')
-    totalTransferCount = 0
-    for item in tmpOut:
+def main(startTime, config, dbBackend):
+    """ """
+    startTime -= 180 # Lets do all 2 minutes ago. and this has to be re-checked after run.
+    parsedate = datetime.datetime.fromtimestamp(startTime)
+    print parsedate.hour, parsedate.minute
+    findLine = "%02d %02d " % (parsedate.hour, parsedate.minute)
+    out = {}
+    for inType, command in COMMANDS.items():
+        out[inType] = {}
+        fd = NamedTemporaryFile(delete=False)
+        fd.close()
+        os.system("%s &> %s" % (command, fd.name))
+        with open(fd.name, 'r') as fd1:
+            for line in fd1.readlines():
+                if line.startswith(findLine):
+                    splLine = line.split()
+                    out[inType].setdefault(splLine[2], 0)
+                    out[inType][splLine[2]] += 1
+    print out
+    out['success']['0'] -= out['exclude']['0']
+    for item, value in out['success'].items():
+        dbBackend.sendMetric('gridftp.status.transferStatus', value, {'timestamp': startTime, 'statuskey': item})
+    for item, value in out['users'].items():
+        dbBackend.sendMetric('gridftp.status.authorize', value, {'timestamp': startTime, 'statuskey': item})
+    print out
+    return
+
+def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):
+    for item in allData:
         if not item:
             continue
-        for desc in item.split('\n'):
-            if not desc:
-                continue
-            vals = [val for val in desc.split() if val]
-            if vals[0] in IGNORE_USERS:
-                continue
-            totalTransferCount += 1
-            if 'UserStats' not in memInfo.keys():
-                memInfo['UserStats'] = {}
-            if str(vals[0]) not in memInfo['UserStats'].keys():
-                memInfo['UserStats'][str(vals[0])] = {}
-                memInfo['UserStats'][str(vals[0])]['Active'] = 0
-                memInfo['UserStats'][str(vals[0])]['procStats'] = []
-            memInfo['UserStats'][str(vals[0])]['Active'] += 1
-            memInfo['UserStats'][str(vals[0])]['procStats'].append(getProcInfo(vals[1]))
-    memInfo['TotalActiveTransfers'] = totalTransferCount
-    return memInfo
+        tmpI = item.split()
+        size = int(tmpI[0].strip())
+        fullPath = tmpI[1].strip()[cutFirst:]
+        dbBackend.sendMetric(startKey, size, {'timestamp': timestamp, 'statKey': fullPath})
 
-class MyDaemon(Daemon):
-    def run(self):
-        while True:
-            print get()
-            time.sleep(100)
+def execute():
+    config = ConfigReader()
+    dbInput = checkConfigForDB(config)
+    dbBackend = opentsdb(dbInput)
+    startTime = int(time.time())
+    print 'Running Main'
+    main(startTime, config, dbBackend)
+    dbBackend.stopWriter()  # Flush out everything what is left.
+    endTime = int(time.time())
+    totalRuntime = endTime - startTime
+    print 'StartTime: %s, EndTime: %s, Runtime: %s' % (startTime, endTime, totalRuntime)
 
 if __name__ == "__main__":
-    print get()
+    execute()

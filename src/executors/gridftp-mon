@@ -1,0 +1,47 @@
+#!/usr/bin/python
+import os
+import sys
+import time
+from t2Mon.gridftp.gridftp import execute
+from t2Mon.daemon import Daemon
+
+class MyDaemon(Daemon):
+    def run(self, runTimer):
+        while True:
+            runTimer = int(runTimer)
+            startTime = int(time.time())
+            execute()
+            endTime = int(time.time())
+            sleepTime = int(runTimer - (endTime - startTime))
+            print 'Sleeping %s seconds' % sleepTime
+            time.sleep(int(sleepTime))
+
+if __name__ == "__main__":
+    daemonName = 'gridftp-mon'
+    if not os.path.isdir('/var/log/t2Mon/%s/' % daemonName):
+        os.makedirs('/var/log/t2Mon/%s/' % daemonName)
+    daemon =  MyDaemon('/tmp/daemon-%s.pid' % daemonName,
+                       stdout='/var/log/t2Mon/%s/std.out' % daemonName,
+                       stderr='/var/log/t2Mon/%s/std.err' % daemonName)
+    if len(sys.argv) >= 2:
+        if sys.argv[1] == 'start':
+            if len(sys.argv) != 3:
+                print 'Usage: %s start runTimer' % sys.argv[0]
+                sys.exit(2)
+            daemon.start(sys.argv[2])
+        elif sys.argv[1] == 'stop':
+            daemon.stop()
+        elif sys.argv[1] == 'restart':
+            if len(sys.argv) != 3:
+                print 'Usage: %s restart runTimer' % sys.argv[0]
+                sys.exit(2)
+            daemon.restart(sys.argv[2])
+        elif sys.argv[1] == 'status':
+            daemon.status()
+        else:
+            print "Unknown command"
+            sys.exit(2)
+        sys.exit(0)
+    else:
+        print "usage: %s start|stop|status|restart [runTimer]" % sys.argv[0]
+        sys.exit(2)
