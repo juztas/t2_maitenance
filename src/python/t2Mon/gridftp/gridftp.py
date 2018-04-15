@@ -22,7 +22,7 @@ def getConnections(inputIP):
     count = 0
     fd = NamedTemporaryFile(delete=False)
     fd.close()
-    os.system("%s &> %s" % (CONNECTIONS % (inputIP, fd.name)))
+    os.system("%s &> %s" % (CONNECTIONS % inputIP, fd.name))
     with open(fd.name, 'r') as fd1:
         for line in fd1.readlines():
             count += 1
