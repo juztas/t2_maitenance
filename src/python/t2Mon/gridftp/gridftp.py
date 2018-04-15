@@ -59,11 +59,11 @@ def main(startTime, config, dbBackend):
         for item, value in out['users'].items():
             dbBackend.sendMetric('gridftp.status.authorize', value, {'timestamp': startTime, 'statuskey': item})
     print out
-    if config.hasoption('main', 'my_public_ip'):
-        connCount = getConnections(config.getoption('main', 'my_public_ip'))
+    if config.hasOption('main', 'my_public_ip'):
+        connCount = getConnections(config.getOption('main', 'my_public_ip'))
         dbBackend.sendMetric('gridftp.status.connOutside', connCount, {'timestamp': startTime})
-    if config.hasoption('main', 'my_private_ip'):
-        connCount = getConnections(config.getoption('main', 'my_private_ip'))
+    if config.hasOption('main', 'my_private_ip'):
+        connCount = getConnections(config.getOption('main', 'my_private_ip'))
         dbBackend.sendMetric('gridftp.status.connPrivate', connCount, {'timestamp': startTime})
     return
 
