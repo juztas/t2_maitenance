@@ -13,8 +13,9 @@ class MyDaemon(Daemon):
             execute()
             endTime = int(time.time())
             sleepTime = int(runTimer - (endTime - startTime))
-            print 'Sleeping %s seconds' % sleepTime
-            time.sleep(int(sleepTime))
+            if sleepTime > 0:
+                print 'Sleeping %s seconds' % sleepTime
+                time.sleep(int(sleepTime))
 
 if __name__ == "__main__":
     daemonName = 'namenode-mon'
