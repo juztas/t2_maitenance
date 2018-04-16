@@ -16,6 +16,7 @@ COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-aut
 
 CONNECTIONS = "netstat -tuplna | grep globus-gridf | grep tcp | grep %s"
 UCSD_FALLBACK = "grep -E '169.228.13[0-3]' /var/log/gridftp-auth.log | grep 'Transfer stats' | grep '/store/temp/user' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0}'"
+CALTECH_TEMP = "grep -E '(192.84.88.*|198.32.4[3-4].*)' /var/log/gridftp-auth.log | grep 'Transfer stats' | grep '/store/temp/user' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0}'"
 # TODO for future;
 # Grep out Transfer stats and ip information. Also it shows the time for the transfer and also how many bytes were transferred.
 
@@ -75,6 +76,8 @@ def main(startTime, config, dbBackend):
         dbBackend.sendMetric('gridftp.status.connPrivate', connCount, {'timestamp': startTime})
     connCount = getConnections(None, UCSD_FALLBACK, filterIn=findLine)
     dbBackend.sendMetric('gridftp.status.ucsdfallbacked', connCount, {'timestamp': startTime})
+    connCount = getConnections(None, CALTECH_TEMP, filterIn=findLine)
+    dbBackend.sendMetric('gridftp.status.caltechtemp', connCount, {'timestamp': startTime})
     return
 
 def execute():
