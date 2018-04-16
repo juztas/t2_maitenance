@@ -15,14 +15,18 @@ COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-aut
             "users": "grep 'successfully authorized.' /var/log/gridftp-auth.log | grep ':: User' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $9}'"}
 
 CONNECTIONS = "netstat -tuplna | grep globus-gridf | grep tcp | grep %s"
+UCSD_FALLBACK = "grep -E '169.228.13[0-3]' /var/log/gridftp-auth.log | grep 'Transfer stats' | grep '/store/temp/user' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0}'"
 # TODO for future;
 # Grep out Transfer stats and ip information. Also it shows the time for the transfer and also how many bytes were transferred.
 
-def getConnections(inputIP):
+def getConnections(inputIP=None, call=None):
     count = 0
     fd = NamedTemporaryFile(delete=False)
     fd.close()
-    os.system("%s &> %s" % (CONNECTIONS % inputIP, fd.name))
+    if inputIP:
+        os.system("%s &> %s" % (call % inputIP, fd.name))
+    else:
+        os.system("%s &> %s" % (call, fd.name))
     with open(fd.name, 'r') as fd1:
         for line in fd1.readlines():
             count += 1
@@ -60,11 +64,13 @@ def main(startTime, config, dbBackend):
             dbBackend.sendMetric('gridftp.status.authorize', value, {'timestamp': startTime, 'statuskey': item})
     print out
     if config.hasOption('main', 'my_public_ip'):
-        connCount = getConnections(config.getOption('main', 'my_public_ip'))
+        connCount = getConnections(config.getOption('main', 'my_public_ip'), CONNECTIONS)
         dbBackend.sendMetric('gridftp.status.connOutside', connCount, {'timestamp': startTime})
     if config.hasOption('main', 'my_private_ip'):
-        connCount = getConnections(config.getOption('main', 'my_private_ip'))
+        connCount = getConnections(config.getOption('main', 'my_private_ip'), CONNECTIONS)
         dbBackend.sendMetric('gridftp.status.connPrivate', connCount, {'timestamp': startTime})
+    connCount = getConnections(None, UCSD_FALLBACK)
+    dbBackend.sendMetric('gridftp.status.ucsdfallbacked', connCount, {'timestamp': startTime})
     return
 
 def execute():
