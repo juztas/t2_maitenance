@@ -5,6 +5,7 @@ import time
 import shutil
 import datetime
 import socket
+import traceback
 from t2Mon.common.Utilities import externalCommand
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.Utilities import checkConfigForDB
@@ -79,7 +80,7 @@ def execute():
                                      float(averageStatus/len(allChecks)), {'myhost': HOST, 'cmsCheck': 'overall', 'timestamp': CURRENT_TIME})
                 dbBackend.stopWriter()
     except:
-        print 'Total Failure'
+        print 'Total Failure', traceback.format_exc()
         dbBackend.sendMetric('compute.status.overall', -1, {'myhost': HOST, 'cmsCheck': 'overall', 'timestamp': CURRENT_TIME})
         dbBackend.stopWriter()
 

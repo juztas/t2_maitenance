@@ -12,7 +12,9 @@ from t2Mon.common.database.opentsdb import opentsdb
 
 COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $13 \" \" 0}'",
             "success": "grep 'ended with rc' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $15}'",
-            "users": "grep 'successfully authorized.' /var/log/gridftp-auth.log | grep ':: User' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $9}'"}
+            "users": "grep 'successfully authorized.' /var/log/gridftp-auth.log | grep ':: User' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $9}'",
+            "failedConnGriftpHDFS": "tail -n 10000 /var/log/gridftp-auth.log | grep 'Failed to connect to' | awk '{split($5, a, \":\"); split($17, b, \":\"); print a[1] \" \" a[2] \" \" substr(b[1],2)}'",
+            "firstBadLink": "cat /var/log/gridftp-auth.log | grep 'Bad connect ack with firstBadLink' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0 \" \" $16}'"}
 
 CONNECTIONS = "netstat -tuplna | grep globus-gridf | grep tcp | grep %s"
 UCSD_FALLBACK = "grep -E '169.228.13[0-3]' /var/log/gridftp-auth.log | grep 'Transfer stats' | grep '/store/temp/user' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0}'"
@@ -67,6 +69,12 @@ def main(startTime, config, dbBackend):
     if out['users']:
         for item, value in out['users'].items():
             dbBackend.sendMetric('gridftp.status.authorize', value, {'timestamp': startTime, 'statuskey': item})
+    if out['failedConnGriftpHDFS']:
+        for item, value in out['failedConnGriftpHDFS'].items():
+            dbBackend.sendMetric('gridftp.status.failedConnGriftpHDFS', value, {'timestamp': startTime, 'statuskey': item})
+    if out['firstBadLink']:
+        for item, value in out['firstBadLink'].items():
+            dbBackend.sendMetric('gridftp.status.firstBadLink', value, {'timestamp': startTime, 'statuskey': item})
     print out
     if config.hasOption('main', 'my_public_ip'):
         connCount = getConnections(config.getOption('main', 'my_public_ip'), CONNECTIONS)

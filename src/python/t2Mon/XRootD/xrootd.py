@@ -12,13 +12,15 @@ from t2Mon.common.database.opentsdb import opentsdb
 
 COMMANDS = {"login": "grep 'XrootdXeq' %s | grep 'login as' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" $10}'",
             "disc": "grep 'XrootdXeq' %s | grep ' disc ' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" 0 \" \" $7}'", # Later we need to group timing
+            "failedConnXRootdHDFS": "tail -n 1000000 %s | grep 'Failed to connect to' | awk '{split($2, a, \":\"); split($9, b, \":\"); print a[1] \" \" a[2] \" \" substr(b[1],2)}'"
             } # Later we need to group timing
 
 XROOTD_FILES = ['/var/log/xrootd/xrootd.log',
                 '/var/log/xrootd/2/xrootd.log',
                 '/var/log/xrootd/3/xrootd.log',
                 '/var/log/xrootd/4/xrootd.log',
-                '/var/log/xrootd/clustered/xrootd.log']
+                '/var/log/xrootd/clustered/xrootd.log',
+                '/var/log/xrootd/xcache/xrootd.log']
 
 CONNECTIONS = "netstat -tuplna | grep xrootd | grep tcp | grep %s"
 # TODO for future;
@@ -66,6 +68,9 @@ def main(startTime, config, dbBackend):
     if out['disc']:
         for item, value in out['disc'].items():
             dbBackend.sendMetric('xrootd.status.discon', value, {'timestamp': startTime, 'statuskey': item})
+    if out['failedConnXRootdHDFS']:
+        for item, value in out['failedConnXRootdHDFS'].items():
+            dbBackend.sendMetric('xrootd.status.failedHDFS', value, {'timestamp': startTime, 'statuskey': item})
     print out
     if config.hasOption('main', 'my_public_ip'):
         connCount = getConnections(config.getOption('main', 'my_public_ip'))

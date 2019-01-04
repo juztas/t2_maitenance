@@ -34,6 +34,10 @@ def hdfsCaller(q, result):
 def main(timestamp, config, dbBackend):
     """ Main method """
     out = gethdfsOut('http://%s:50070/jmx' % config.getOption('hdfs', 'namenode'))
+    if not (out and 'beans' in out):
+        print out
+        dbBackend.sendMetric('hadoop.monscript.faileddatanode', 1, {'timestamp': timestamp})
+        return
     for item in out['beans']:
         if 'LiveNodes' in item.keys():
             nodeInfo = json.loads(item['LiveNodes'])

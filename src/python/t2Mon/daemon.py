@@ -6,6 +6,15 @@ import time
 import atexit
 from signal import SIGTERM
 
+def check_pid(pid):        
+    """ Check For the existence of a unix pid. """
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    else:
+        return True
+
 class Daemon(object):
     """
     A generic daemon class.
@@ -78,8 +87,12 @@ class Daemon(object):
         except IOError:
             pid = None
 
-        if pid:
-            message = "pidfile %s already exist. Daemon already running?\n"
+        if pid and check_pid(pid):
+            message = "pidfile %s already exist and service is running.\n"
+            sys.stderr.write(message % self.pidfile)
+            sys.exit(1)
+        elif pid:
+            message = "pidfile %s already exists, but service is not running.\n"
             sys.stderr.write(message % self.pidfile)
             sys.exit(1)
 
@@ -96,6 +109,9 @@ class Daemon(object):
             pidf = file(self.pidfile, 'r')
             pid = int(pidf.read().strip())
             pidf.close()
+            if not check_pid(pid):
+                print 'PID exists, but process is not running'
+                sys.exit(1)
         except IOError:
             pid = None
 

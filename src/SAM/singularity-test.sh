@@ -40,13 +40,10 @@ fi
 # ERROR  : Could not identify basedir for home directory path: /
 if [ "x$HAS_SINGULARITY" = "xTrue" ]; then
      SINGULARITY_HOME=`mktemp -d`
-     echo "$OSG_SINGULARITY_PATH exec --home $SINGULARITY_HOME:/srv --bind /cvmfs --bind $SINGULARITY_HOME:/srv --pwd /srv --scratch /var/tmp --scratch /tmp --containall $OSG_SINGULARITY_IMAGE_DEFAULT echo Hello World | grep Hello World"
+     echo "$OSG_SINGULARITY_PATH exec --home $SINGULARITY_HOME:/srv --bind /cvmfs --pwd /srv --containall $OSG_SINGULARITY_IMAGE_DEFAULT echo Hello World | grep Hello World"
      if ! ($OSG_SINGULARITY_PATH exec --home $SINGULARITY_HOME:/srv \
                                       --bind /cvmfs \
-                                      --bind $SINGULARITY_HOME:/srv \
                                       --pwd /srv \
-                                      --scratch /var/tmp \
-                                      --scratch /tmp \
                                       --containall \
                                       "$OSG_SINGULARITY_IMAGE_DEFAULT" \
                                       echo "Hello World" \

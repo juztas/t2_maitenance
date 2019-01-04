@@ -2,6 +2,7 @@
 import json
 import subprocess
 import time
+import copy
 from t2Mon.common.Utilities import externalCommand
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.configReader import ConfigReader
@@ -18,6 +19,11 @@ def main(timestamp, config, dbBackend):
     """ Main method """
     out = gethdfsOut('http://%s:50070/jmx' % config.getOption('hdfs', 'namenode'))
     totalNodes = {'totalnodes': 0, 'livenodes': 0, 'deadnodes': 0, 'decomnodes': 0}
+    if not (out and 'beans' in out):
+        print out
+        dbBackend.sendMetric('hadoop.monscript.failednamenode', 1, {'timestamp': timestamp})
+        return
+    livenodesstats = {} 
     for item in out['beans']:
         if item['name'] in MAPPING:
             uniqKey = getUniqKey(item['name'])
@@ -27,6 +33,8 @@ def main(timestamp, config, dbBackend):
             for nodeKey, nodeVal in {'LiveNodes': 0, 'DeadNodes': 1, 'DecomNodes': 2}.items():
                 if nodeKey in item:
                     nodeInfo = json.loads(item[nodeKey])
+                    if nodeKey == 'LiveNodes':
+                        livenodesstats = copy.copy(nodeInfo)
                     parsedOut = {}
                     totalNodes[nodeKey.lower()] += len(nodeInfo)
                     totalNodes['totalnodes'] += len(nodeInfo)
@@ -39,11 +47,21 @@ def main(timestamp, config, dbBackend):
                             dbBackend.sendMetric(key, value, {'timestamp': timestamp,
                                                               'nodeName': nodeName,
                                                               'nodeKey': nodeKey})
+    for nodename, nodevals in livenodesstats.items():
+        usedSpace = float(nodevals.get('usedSpace', 0))
+        capacity = float(nodevals.get('capacity', 0))
+        try:
+            leftpercentage = round(((capacity-usedSpace)*100) / capacity, 2)
+            dbBackend.sendMetric('hadoop.nodestatus.leftpercentage', leftpercentage, {'timestamp': timestamp,
+                                                                                      'nodeName': nodename})
+        except ZeroDivisionError as ex:
+            print 'Zero Division Error for %s %s' % (nodename, str(nodevals))
+            continue
     for key, value in totalNodes.items():
         dbBackend.sendMetric('hadoop.nodestatus.%s' % key, value, {'timestamp': timestamp})
 
 def getDirStats(directory):
-    hdfs_cmd = "hadoop fs -du %s" % directory
+    hdfs_cmd = "sudo -u hdfs hadoop fs -du %s" % directory
     print 'About to run:'
     print hdfs_cmd
     out = subprocess.Popen(hdfs_cmd, shell=True, stdin=subprocess.PIPE,
@@ -60,7 +78,7 @@ def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):
             continue
         tmpI = item.split()
         size = int(tmpI[0].strip())
-        fullPath = tmpI[1].strip()[cutFirst:]
+        fullPath = tmpI[2].strip()[cutFirst:]
         dbBackend.sendMetric(startKey, size, {'timestamp': timestamp, 'statKey': fullPath})
 
 def execute():
