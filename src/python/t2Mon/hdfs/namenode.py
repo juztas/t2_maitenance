@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import json
+import shutil
 import subprocess
 import time
 import copy
@@ -23,12 +24,15 @@ def main(timestamp, config, dbBackend):
         print out
         dbBackend.sendMetric('hadoop.monscript.failednamenode', 1, {'timestamp': timestamp})
         return
-    livenodesstats = {} 
+    livenodesstats = {}
+    percentremaining = 0 
     for item in out['beans']:
         if item['name'] in MAPPING:
             uniqKey = getUniqKey(item['name'])
             parsedOut = parseNumeric(item, uniqKey)
             for key, value in parsedOut.items():
+                if key == 'hadoop.NameNodeInfo.PercentRemaining':
+                    percentremaining = int(value)
                 dbBackend.sendMetric(key, value, {'timestamp': timestamp})
             for nodeKey, nodeVal in {'LiveNodes': 0, 'DeadNodes': 1, 'DecomNodes': 2}.items():
                 if nodeKey in item:
@@ -47,16 +51,34 @@ def main(timestamp, config, dbBackend):
                             dbBackend.sendMetric(key, value, {'timestamp': timestamp,
                                                               'nodeName': nodeName,
                                                               'nodeKey': nodeKey})
+    nodesizes = {}
     for nodename, nodevals in livenodesstats.items():
         usedSpace = float(nodevals.get('usedSpace', 0))
         capacity = float(nodevals.get('capacity', 0))
         try:
             leftpercentage = round(((capacity-usedSpace)*100) / capacity, 2)
+            nodesizes[nodename] = leftpercentage
             dbBackend.sendMetric('hadoop.nodestatus.leftpercentage', leftpercentage, {'timestamp': timestamp,
                                                                                       'nodeName': nodename})
         except ZeroDivisionError as ex:
             print 'Zero Division Error for %s %s' % (nodename, str(nodevals))
             continue
+    nodesabove = 0
+    for nodename, nodesize in nodesizes.items():
+        if int(nodesize) > int(percentremaining + 3):
+            nodesabove += 1
+    fd = open('/tmp/nodelistpercent.temp', 'a')
+    if nodesabove == 0:
+        # In this case give full list and allow hdfs do its job
+        nodesabove = 1000
+    for key, value in sorted(nodesizes.iteritems(), key=lambda (k,v): (v,k)):
+        if nodesabove < 0:
+            break
+        import socket
+        fd.write('%s\n' % socket.gethostbyname(key))
+        nodesabove -= 1
+    fd.close()
+    shutil.move('/tmp/nodelistpercent.temp', '/tmp/nodelistpercent.list')
     for key, value in totalNodes.items():
         dbBackend.sendMetric('hadoop.nodestatus.%s' % key, value, {'timestamp': timestamp})
 
