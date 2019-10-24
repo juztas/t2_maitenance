@@ -24,7 +24,7 @@ def getUniqKey(typeName):
         return typeName.split('type=')[-1:][0]
 
 def gethdfsOut(url):
-    command = "curl -q '%s' -m 10 -connect-timeout 10" % (url)
+    command = "curl -q '%s'" % (url)
     print command
     d = {}
     try:

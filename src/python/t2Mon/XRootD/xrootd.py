@@ -78,6 +78,9 @@ def main(startTime, config, dbBackend):
     if config.hasOption('main', 'my_private_ip'):
         connCount = getConnections(config.getOption('main', 'my_private_ip'))
         dbBackend.sendMetric('xrootd.status.connPrivate', connCount, {'timestamp': startTime})
+    if config.hasOption('main', 'my_public_ipv6'):
+        connCount = getConnections(config.getOption('main', 'my_public_ipv6'))
+        dbBackend.sendMetric('xrootd.status.connOutsidev6', connCount, {'timestamp': startTime})
     return
 
 def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):

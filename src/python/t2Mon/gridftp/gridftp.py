@@ -16,7 +16,7 @@ COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-aut
             "failedConnGriftpHDFS": "tail -n 10000 /var/log/gridftp-auth.log | grep 'Failed to connect to' | awk '{split($5, a, \":\"); split($17, b, \":\"); print a[1] \" \" a[2] \" \" substr(b[1],2)}'",
             "firstBadLink": "cat /var/log/gridftp-auth.log | grep 'Bad connect ack with firstBadLink' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0 \" \" $16}'"}
 
-CONNECTIONS = "netstat -tuplna | grep globus-gridf | grep tcp | grep %s"
+CONNECTIONS = "netstat -tuplna | grep globus-g | grep tcp | grep %s"
 UCSD_FALLBACK = "grep -E '169.228.13[0-3]' /var/log/gridftp-auth.log | grep 'Transfer stats' | grep '/store/temp/user' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0}'"
 CALTECH_TEMP = "grep -E '(192.84.88.*|198.32.4[3-4].*)' /var/log/gridftp-auth.log | grep 'Transfer stats' | grep '/store/temp/user' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0}'"
 # TODO for future;
@@ -82,6 +82,9 @@ def main(startTime, config, dbBackend):
     if config.hasOption('main', 'my_private_ip'):
         connCount = getConnections(config.getOption('main', 'my_private_ip'), CONNECTIONS)
         dbBackend.sendMetric('gridftp.status.connPrivate', connCount, {'timestamp': startTime})
+    if config.hasOption('main', 'my_public_ipv6'):
+        connCount = getConnections(config.getOption('main', 'my_public_ipv6'), CONNECTIONS)
+        dbBackend.sendMetric('gridftp.status.connOutsidev6', connCount, {'timestamp': startTime})
     connCount = getConnections(None, UCSD_FALLBACK, filterIn=findLine)
     dbBackend.sendMetric('gridftp.status.ucsdfallbacked', connCount, {'timestamp': startTime})
     connCount = getConnections(None, CALTECH_TEMP, filterIn=findLine)

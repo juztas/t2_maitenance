@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import socket
 import json
 import shutil
 import subprocess
@@ -16,6 +17,23 @@ from t2Mon.hdfs.common import getUniqKey
 MAPPING = ['Hadoop:service=NameNode,name=JvmMetrics', 'java.lang:type=Threading', 'java.lang:type=OperatingSystem', 'Hadoop:service=NameNode,name=FSNamesystem',
            'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo']
 
+def getipfromhostname(hostname):
+    """ This is just a dummy way to exclude already removed datanodes.
+        HDFS Requires namenode restart to clean this up. Solved only in 3.0
+        'LiveNodes': 0, 'DeadNodes': 1, 'DecomNodes': 2
+    """
+    try:
+        socket.gethostbyname(hostname)
+        return 1
+    except socket.gaierror:
+        # This means host is not resolvable
+        return 2
+    except Exception as ex:
+        # New exception unknown.
+        print 'Got Exception: %s' % ex
+        return 1
+
+
 def main(timestamp, config, dbBackend):
     """ Main method """
     out = gethdfsOut('http://%s:50070/jmx' % config.getOption('hdfs', 'namenode'))
@@ -25,7 +43,7 @@ def main(timestamp, config, dbBackend):
         dbBackend.sendMetric('hadoop.monscript.failednamenode', 1, {'timestamp': timestamp})
         return
     livenodesstats = {}
-    percentremaining = 0 
+    percentremaining = 0
     for item in out['beans']:
         if item['name'] in MAPPING:
             uniqKey = getUniqKey(item['name'])
@@ -36,6 +54,7 @@ def main(timestamp, config, dbBackend):
                 dbBackend.sendMetric(key, value, {'timestamp': timestamp})
             for nodeKey, nodeVal in {'LiveNodes': 0, 'DeadNodes': 1, 'DecomNodes': 2}.items():
                 if nodeKey in item:
+                    nodeStatus = nodeVal
                     nodeInfo = json.loads(item[nodeKey])
                     if nodeKey == 'LiveNodes':
                         livenodesstats = copy.copy(nodeInfo)
@@ -45,7 +64,11 @@ def main(timestamp, config, dbBackend):
                     for nodeName, nodeDict in nodeInfo.items():
                         if 'decommissioned' in nodeDict.keys() and nodeDict['decommissioned']:
                             continue
-                        nodeDict['statusofNode'] = nodeVal
+                        if nodeKey == 'DeadNodes':
+                            nodeStatus = getipfromhostname(nodeName)
+                            if nodeStatus == 2:
+                                continue
+                        nodeDict['statusofNode'] = nodeStatus
                         parsedOut = appender(nodeDict, 'nodestatus')
                         for key, value in parsedOut.items():
                             dbBackend.sendMetric(key, value, {'timestamp': timestamp,
