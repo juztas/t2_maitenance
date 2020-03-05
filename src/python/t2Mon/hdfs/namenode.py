@@ -15,7 +15,7 @@ from t2Mon.hdfs.common import appender
 from t2Mon.hdfs.common import getUniqKey
 
 MAPPING = ['Hadoop:service=NameNode,name=JvmMetrics', 'java.lang:type=Threading', 'java.lang:type=OperatingSystem', 'Hadoop:service=NameNode,name=FSNamesystem',
-           'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo']
+           'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo', 'Hadoop:service=NameNode,name=BlockStats']
 
 def getipfromhostname(hostname):
     """ This is just a dummy way to exclude already removed datanodes.
@@ -86,21 +86,13 @@ def main(timestamp, config, dbBackend):
         except ZeroDivisionError as ex:
             print 'Zero Division Error for %s %s' % (nodename, str(nodevals))
             continue
-    nodesabove = 0
-    for nodename, nodesize in nodesizes.items():
-        if int(nodesize) > int(percentremaining + 3):
-            nodesabove += 1
-    fd = open('/tmp/nodelistpercent.temp', 'a')
-    if nodesabove == 0:
-        # In this case give full list and allow hdfs do its job
-        nodesabove = 1000
-    for key, value in sorted(nodesizes.iteritems(), key=lambda (k,v): (v,k)):
-        if nodesabove < 0:
-            break
-        import socket
-        fd.write('%s\n' % socket.gethostbyname(key))
-        nodesabove -= 1
-    fd.close()
+    with open('/tmp/nodelistpercent.temp', 'a') as fd:
+        counter = 20
+        for key, value in sorted(nodesizes.iteritems(), key=lambda (k,v): (v,k)):
+            if counter <= 0:
+                break
+            counter -= 1
+            fd.write('%s\n' % socket.gethostbyname(key))
     shutil.move('/tmp/nodelistpercent.temp', '/tmp/nodelistpercent.list')
     for key, value in totalNodes.items():
         dbBackend.sendMetric('hadoop.nodestatus.%s' % key, value, {'timestamp': timestamp})
