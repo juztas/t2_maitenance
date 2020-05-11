@@ -1,5 +1,7 @@
 #!/usr/bin/python
 """ opentsdb client to publish information """
+from time import sleep
+import socket
 import potsdb
 
 class opentsdb(object):
@@ -20,7 +22,13 @@ class opentsdb(object):
         if self.metrics:
             self.counter = 0
             self.stopWriter()
-        self.metrics = potsdb.Client(self.ip, port=self.port, qsize=self.qsize, host_tag=self.host_tag, mps=self.mps, check_host=self.check_host)
+        while not self.metrics:
+            try:
+                self.metrics = potsdb.Client(self.ip, port=self.port, qsize=self.qsize, host_tag=self.host_tag, mps=self.mps, check_host=self.check_host)
+            except socket.error as ex:
+                print 'Received socket error %s' % str(ex)
+                print 'Will sleep 15 seconds and try again'
+                sleep(15)
 
     def stopWriter(self):
         if self.metrics:

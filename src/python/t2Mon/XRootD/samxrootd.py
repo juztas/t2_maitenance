@@ -9,6 +9,7 @@
 #    3) open, read, and checksum data from a local test file
 #    4) try to open a foreign file from the endpoint
 #    (a fifth, federation check, step will be added in the future)
+# To Start: for site in `cat sites`; do nohup python samxrootd.py -s $site &> samtests/$site & echo $site ; done
 # ########################################################################### #
 
 
@@ -797,7 +798,6 @@ def probe_read(args, sitename, endpoint):
                           status.message.replace("\n", "")))
                 publish(args, args.sttime, sitename, status.code)
                 return
-            import pdb; pdb.set_trace()
             host = f.get_property('DataServer')
             status, data = f.read(offset=0, size=65536, timeout=90)
             if ( not status.ok ):

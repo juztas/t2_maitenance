@@ -15,7 +15,7 @@ from t2Mon.hdfs.common import appender
 from t2Mon.hdfs.common import getUniqKey
 
 MAPPING = ['Hadoop:service=NameNode,name=JvmMetrics', 'java.lang:type=Threading', 'java.lang:type=OperatingSystem', 'Hadoop:service=NameNode,name=FSNamesystem',
-           'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo', 'Hadoop:service=NameNode,name=BlockStats']
+           'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo', 'Hadoop:service=NameNode,name=BlockStats', 'Hadoop:service=NameNode,name=FSNamesystemState']
 
 def getipfromhostname(hostname):
     """ This is just a dummy way to exclude already removed datanodes.
@@ -47,6 +47,20 @@ def main(timestamp, config, dbBackend):
     for item in out['beans']:
         if item['name'] in MAPPING:
             uniqKey = getUniqKey(item['name'])
+            if item['name'] == 'Hadoop:service=NameNode,name=FSNamesystemState':
+                topusercount = {}
+                try:
+                    topusercount = json.loads(item['TopUserOpCounts'])['windows'][0]['ops']
+                except:
+                    break
+                for item1 in topusercount:
+                    #{u'totalCount': 86, u'opType': u'listStatus', u'topUsers': [{u'count': 50, u'user': u'nobody'}, {u'count': 25, u'user': u'hdfs'}, {u'count': 8, u'user': u'christiw'}, {u'count': 2, u'user': u'root'}, {u'count': 1, u'user': u'netdata'}]}
+                    opType = item1['opType']
+                    opType = 'wildcard' if opType == '*' else opType
+                    for user in item1['topUsers']:
+                        dbBackend.sendMetric('hadoop.userops', user['count'], {'timestamp': timestamp,
+                                                                               'user': user['user'],
+                                                                               'operation': opType})
             parsedOut = parseNumeric(item, uniqKey)
             for key, value in parsedOut.items():
                 if key == 'hadoop.NameNodeInfo.PercentRemaining':
@@ -116,6 +130,7 @@ def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):
         tmpI = item.split()
         size = int(tmpI[0].strip())
         fullPath = tmpI[2].strip()[cutFirst:]
+        print fullPath, size
         dbBackend.sendMetric(startKey, size, {'timestamp': timestamp, 'statKey': fullPath})
 
 def execute():

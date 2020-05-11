@@ -25,7 +25,6 @@ def getUniqKey(typeName):
 
 def gethdfsOut(url):
     command = "curl -q '%s'" % (url)
-    print command
     d = {}
     try:
         p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
