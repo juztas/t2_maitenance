@@ -22,10 +22,17 @@ def execute(currdate):
     config = ConfigReader()
     dbInput = checkConfigForDB(config)
     dbBackend = opentsdb(dbInput)
-    cmd = "xrdfs xrootd.t2.ucsd.edu:2040 locate /store/"
+    cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 30 xrdfs xrootd.t2.ucsd.edu:2040 locate /store/"
     # returns output as byte string
     print 'Calling %s' % cmd
-    returned_output = check_output(cmd.split())
+    try:
+        returned_output = check_output(cmd, shell=True)
+    except CalledProcessError as e:
+        t = e.returncode
+        print t, 'xrootd.t2.ucsd.edu'
+        dbBackend.sendMetric('xrd.cache.status',
+                             t, {'myhost': 'REDIRECTOR_URGENT-xrootd.t2.ucsd.edu', 'timestamp': CURRENT_TIME})
+        returned_output = []
     print returned_output
     reghost = re.compile('\[::([0-9.]*)].*')
     CURRENT_TIME = int(time.time())
