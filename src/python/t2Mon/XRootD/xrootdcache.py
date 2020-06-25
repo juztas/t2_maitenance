@@ -7,6 +7,8 @@ import re
 from subprocess import check_output, CalledProcessError
 from datetime import datetime, timedelta
 
+CURRENT_TIME = int(time.time())
+
 def preparefiles(currdate):
     out = check_output("fallocate -l 16M /tmp/xrd-cache-test", shell=True)
     for i in range(0,24):
@@ -25,6 +27,7 @@ def execute(currdate):
     cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 30 xrdfs xrootd.t2.ucsd.edu:2040 locate /store/"
     # returns output as byte string
     print 'Calling %s' % cmd
+    CURRENT_TIME = int(time.time())
     try:
         returned_output = check_output(cmd, shell=True)
     except CalledProcessError as e:
