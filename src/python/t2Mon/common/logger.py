@@ -35,3 +35,21 @@ def getLogger(logFile='', logLevel='DEBUG', logOutName='api.log', rotateTime='mi
     logger.addHandler(handler)
     logger.setLevel(levels[logLevel])
     return logger
+
+
+def getStreamLogger(logLevel='DEBUG'):
+    """ Get Stream Logger """
+    levels = {'FATAL': logging.FATAL,
+              'ERROR': logging.ERROR,
+              'WARNING': logging.WARNING,
+              'INFO': logging.INFO,
+              'DEBUG': logging.DEBUG}
+    logger = logging.getLogger()
+    handler = StreamHandler()
+    formatter = logging.Formatter("%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - %(message)s",
+                                  datefmt="%a, %d %b %Y %H:%M:%S")
+    handler.setFormatter(formatter)
+    if not logger.handlers:
+        logger.addHandler(handler)
+    logger.setLevel(levels[logLevel])
+    return logger

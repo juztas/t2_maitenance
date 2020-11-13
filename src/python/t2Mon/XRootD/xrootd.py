@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
-from t2Mon.common.logger import getLogger
+from t2Mon.common.logger import getStreamLogger
 
 COMMANDS = {"login": "grep 'XrootdXeq' %s | grep 'login as' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" $10}'",
             "disc": "grep 'XrootdXeq' %s | grep ' disc ' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" 0 \" \" $7}'",
@@ -123,5 +123,5 @@ def execute(logger):
 
 if __name__ == "__main__":
     DAEMONNAME = 'namenode-mon'
-    LOGGER = getLogger('/var/log/t2Mon/%s/' % DAEMONNAME)
+    LOGGER = getStreamLogger()
     execute(LOGGER)

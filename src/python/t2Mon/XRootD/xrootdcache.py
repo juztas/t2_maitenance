@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.database.opentsdb import opentsdb
-from t2Mon.common.logger import getLogger
+from t2Mon.common.logger import getStreamLogger
 
 CURRENT_TIME = int(time.time())
 
@@ -100,5 +100,5 @@ def execute(logger):
 
 if __name__ == "__main__":
     DAEMONNAME = 'xcache-mon'
-    LOGGER = getLogger('/var/log/t2Mon/%s/' % DAEMONNAME)
+    LOGGER = getStreamLogger()
     execute(LOGGER)
