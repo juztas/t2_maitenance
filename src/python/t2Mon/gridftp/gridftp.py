@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
-from t2Mon.common.logger import getLogger
+from t2Mon.common.logger import getStreamLogger
 
 COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $13 \" \" 0}'",
             "success": "grep 'ended with rc' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $15}'",
@@ -104,5 +104,5 @@ def execute(logger):
 
 if __name__ == "__main__":
     DAEMONNAME = 'gridftp-mon'
-    LOGGER = getLogger('/var/log/t2Mon/%s/' % DAEMONNAME)
+    LOGGER = getStreamLogger()
     execute(LOGGER)
