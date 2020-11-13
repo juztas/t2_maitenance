@@ -1,7 +1,0 @@
-/etc/grid-security/hostcert.pem
-/etc/grid-security/xrootd/xrootdcert.pem
-/etc/grid-security/bestman/bestmancert.pem
-/etc/grid-security/xrd/xrdcert.pem
-/etc/grid-security/http/httpcert.pem
-/etc/grid-security/grafana-cert.pem
-/etc/grid-security/fifemon-cert.pem
