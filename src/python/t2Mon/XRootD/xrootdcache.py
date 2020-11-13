@@ -1,60 +1,52 @@
+#!/usr/bin/python
 import os
-import sys
+import time
+import re
 import socket
+from subprocess import check_output, CalledProcessError
+from datetime import datetime, timedelta
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.database.opentsdb import opentsdb
-import time
-import re
-from subprocess import check_output, CalledProcessError
-from datetime import datetime, timedelta
-import logging
-
-logger = logging.getLogger('dev')
-logger.setLevel(logging.INFO)
-
-consoleHandler = logging.StreamHandler()
-consoleHandler.setLevel(logging.INFO)
-
-logger.addHandler(consoleHandler)
-
-formatter = logging.Formatter('%(asctime)s  %(name)s  %(levelname)s: %(message)s')
-consoleHandler.setFormatter(formatter)
+from t2Mon.common.logger import getLogger
 
 CURRENT_TIME = int(time.time())
 
-def preparefiles(currdate):
-    out = check_output("fallocate -l 16M /tmp/xrd-cache-test", shell=True)
-    for i in range(0,24):
+
+def preparefiles(currdate, logger):
+    if not os.path.isfile('/tmp/xrd-cache-test'):
+        _ = check_output("fallocate -l 16M /tmp/xrd-cache-test", shell=True)
+    for i in range(0, 24):
         newdate = currdate + timedelta(hours=i)
-        fullLfn = '/mnt/hadoop/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (newdate.year, newdate.month, newdate.day, newdate.hour)
+        fullLfn = '/mnt/hadoop/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (newdate.year, newdate.month,
+                                                                                            newdate.day, newdate.hour)
         cmd = "cp /tmp/xrd-cache-test %s" % fullLfn
         logger.info('Call CMD: %s', cmd)
-        out = check_output(cmd, shell=True)
+        if not os.path.isfile(fullLfn):
+            _ = check_output(cmd, shell=True)
 
 
-def execute(currdate, redirector):
-    currLFN = '/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (currdate.year, currdate.month, currdate.day, currdate.hour)
-    config = ConfigReader()
-    dbInput = checkConfigForDB(config)
-    dbBackend = opentsdb(dbInput)
+def main(currdate, redirector, dbBackend, logger):
+    currLFN = '/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (currdate.year, currdate.month,
+                                                                             currdate.day, currdate.hour)
     cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 30 xrdfs %s locate /store/" % redirector
     # returns output as byte string
-    print 'Calling %s' % cmd
-    CURRENT_TIME = int(time.time())
+    logger.info('Calling %s' % cmd)
+    timeNow = int(time.time())
+    retOutput = []
     try:
-        returned_output = check_output(cmd, shell=True)
-    except CalledProcessError as e:
-        t = e.returncode
-        print t, 'xrootd.t2.ucsd.edu'
+        retOutput = check_output(cmd, shell=True)
+    except CalledProcessError as ex:
+        exCode = ex.returncode
+        logger.critical('Got Error: %s, Redirector: %s ' % (str(ex), redirector))
         dbBackend.sendMetric('xrd.cache.status',
-                             t, {'myhost': 'REDIRECTOR_URGENT-xrootd.t2.ucsd.edu', 'timestamp': CURRENT_TIME})
+                             exCode, {'myhost': 'REDIRECTOR_URGENT-%s' % redirector, 'timestamp': timeNow})
         return
-    print returned_output
-    reghost = re.compile('\[::([0-9.]*)].*')
-    reghostipv6 = re.compile('\[([0-9a-z.:]*)].*')
-    CURRENT_TIME = int(time.time())
-    for line in returned_output.decode("utf-8").split('\n'):
+    logger.info('Returned out from Redirector: %s' % retOutput)
+    reghost = re.compile(r'\[::([0-9.]*)].*')
+    reghostipv6 = re.compile(r'\[([0-9a-z.:]*)].*')
+    timeNow = int(time.time())
+    for line in retOutput.decode("utf-8").split('\n'):
         if not line:
             break
         host = 'localhost'
@@ -69,41 +61,44 @@ def execute(currdate, redirector):
             except socket.herror:
                 host = str(regmatchipv6.group(1))
         else:
-            print 'FAILED PARSE'
+            logger.critical('Failed to parse %s' % line)
+            dbBackend.sendMetric('xrd.cache.status',
+                                 exCode, {'myhost': 'FAILED-%s' % line.replace(' ' '-'), 'timestamp': timeNow})
             break
-        print host
         newfile = "root://%s/%s" % (host, currLFN)
         cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 60 xrdcp -f %s %s" % (newfile, "/dev/null")
         try:
-            print cmd
-            out = check_output(cmd, shell=True)
-            t = 0
-        except CalledProcessError as e:
-            t = e.returncode
-        print t, host
+            logger.info('Call command %s' % cmd)
+            _ = check_output(cmd, shell=True)
+            exCode = 0
+            logger.info('Got Exit: %s, Host: %s ' % (str(ex), host))
+        except CalledProcessError as ex:
+            exCode = ex.returncode
+            logger.critical('Got Error: %s, Host: %s ' % (str(ex), host))
         dbBackend.sendMetric('xrd.cache.status',
-                             t, {'myhost': host, 'timestamp': CURRENT_TIME})
-            
-    dbBackend.stopWriter()
+                             exCode, {'myhost': host, 'timestamp': timeNow})
+
+
+def execute(logger):
+    config = ConfigReader()
+    dbInput = checkConfigForDB(config)
+    dbBackend = opentsdb(dbInput)
+    if config.hasSection('xcache'):
+        redirector = config.getOptions('redirector')
+    if not redirector:
+        raise Exception('Redirector not set in configuration')
+    startTime = int(time.time())
+    logger.info('Running Main')
+    currdate = datetime.now()
+    preparefiles(currdate, logger)
+    main(currdate, redirector, dbBackend, logger)
+    dbBackend.stopWriter()  # Flush out everything what is left.
+    endTime = int(time.time())
+    totalRuntime = endTime - startTime
+    logger.info('StartTime: %s, EndTime: %s, Runtime: %s' % (startTime, endTime, totalRuntime))
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print 'Please provide redirector host:port as argument'
-        exit(1)
-    currhour = None
-    while True:
-        currdate = datetime.now()
-        newhour = currdate.hour
-        if newhour != currhour:
-            preparefiles(currdate)
-            currhour = newhour
-        exit
-        sttime = int(time.time())
-        execute(currdate, sys.argv[1])
-        endtime = int(time.time())
-        difftime = endtime - sttime
-        diffsleep = 120 - difftime
-        if diffsleep > 0:
-            print 'Sleep %s ' % diffsleep 
-            time.sleep(diffsleep)
+    DAEMONNAME = 'xcache-mon'
+    LOGGER = getLogger('/var/log/t2Mon/%s/' % DAEMONNAME)
+    execute(LOGGER)

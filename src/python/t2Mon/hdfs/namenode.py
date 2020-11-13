@@ -5,17 +5,22 @@ import shutil
 import subprocess
 import time
 import copy
-from t2Mon.common.Utilities import externalCommand
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
+from t2Mon.common.logger import getLogger
 from t2Mon.hdfs.common import gethdfsOut
 from t2Mon.hdfs.common import parseNumeric
 from t2Mon.hdfs.common import appender
 from t2Mon.hdfs.common import getUniqKey
 
-MAPPING = ['Hadoop:service=NameNode,name=JvmMetrics', 'java.lang:type=Threading', 'java.lang:type=OperatingSystem', 'Hadoop:service=NameNode,name=FSNamesystem',
-           'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo', 'Hadoop:service=NameNode,name=BlockStats', 'Hadoop:service=NameNode,name=FSNamesystemState']
+
+
+MAPPING = ['Hadoop:service=NameNode,name=JvmMetrics', 'java.lang:type=Threading',
+           'java.lang:type=OperatingSystem', 'Hadoop:service=NameNode,name=FSNamesystem',
+           'Hadoop:service=NameNode,name=NameNodeActivity', 'Hadoop:service=NameNode,name=NameNodeInfo',
+           'Hadoop:service=NameNode,name=BlockStats', 'Hadoop:service=NameNode,name=FSNamesystemState']
+
 
 def getipfromhostname(hostname):
     """ This is just a dummy way to exclude already removed datanodes.
@@ -34,16 +39,15 @@ def getipfromhostname(hostname):
         return 1
 
 
-def main(timestamp, config, dbBackend):
+def main(timestamp, config, dbBackend, logger):
     """ Main method """
     out = gethdfsOut('http://%s:50070/jmx' % config.getOption('hdfs', 'namenode'))
     totalNodes = {'totalnodes': 0, 'livenodes': 0, 'deadnodes': 0, 'decomnodes': 0}
     if not (out and 'beans' in out):
-        print out
+        logger.debug('Error: %s' % out)
         dbBackend.sendMetric('hadoop.monscript.failednamenode', 1, {'timestamp': timestamp})
         return
     livenodesstats = {}
-    percentremaining = 0
     for item in out['beans']:
         if item['name'] in MAPPING:
             uniqKey = getUniqKey(item['name'])
@@ -52,9 +56,9 @@ def main(timestamp, config, dbBackend):
                 try:
                     topusercount = json.loads(item['TopUserOpCounts'])['windows'][0]['ops']
                 except:
+                    logger.debug('Error get TopUserOpCounts')
                     break
                 for item1 in topusercount:
-                    #{u'totalCount': 86, u'opType': u'listStatus', u'topUsers': [{u'count': 50, u'user': u'nobody'}, {u'count': 25, u'user': u'hdfs'}, {u'count': 8, u'user': u'christiw'}, {u'count': 2, u'user': u'root'}, {u'count': 1, u'user': u'netdata'}]}
                     opType = item1['opType']
                     opType = 'wildcard' if opType == '*' else opType
                     for user in item1['topUsers']:
@@ -63,8 +67,6 @@ def main(timestamp, config, dbBackend):
                                                                                'operation': opType})
             parsedOut = parseNumeric(item, uniqKey)
             for key, value in parsedOut.items():
-                if key == 'hadoop.NameNodeInfo.PercentRemaining':
-                    percentremaining = int(value)
                 dbBackend.sendMetric(key, value, {'timestamp': timestamp})
             for nodeKey, nodeVal in {'LiveNodes': 0, 'DeadNodes': 1, 'DecomNodes': 2}.items():
                 if nodeKey in item:
@@ -98,11 +100,11 @@ def main(timestamp, config, dbBackend):
             dbBackend.sendMetric('hadoop.nodestatus.leftpercentage', leftpercentage, {'timestamp': timestamp,
                                                                                       'nodeName': nodename})
         except ZeroDivisionError as ex:
-            print 'Zero Division Error for %s %s' % (nodename, str(nodevals))
+            logger.debug('Zero Division Error for %s %s. Exception: %s' % (nodename, str(nodevals), ex))
             continue
     with open('/tmp/nodelistpercent.temp', 'a') as fd:
         counter = 20
-        for key, value in sorted(nodesizes.iteritems(), key=lambda (k,v): (v,k)):
+        for key, value in sorted(nodesizes.iteritems(), key=lambda (k, v): (v, k)):
             if counter <= 0:
                 break
             counter -= 1
@@ -111,10 +113,10 @@ def main(timestamp, config, dbBackend):
     for key, value in totalNodes.items():
         dbBackend.sendMetric('hadoop.nodestatus.%s' % key, value, {'timestamp': timestamp})
 
-def getDirStats(directory):
+
+def getDirStats(directory, logger):
     hdfs_cmd = "sudo -u hdfs hadoop fs -du %s" % directory
-    print 'About to run:'
-    print hdfs_cmd
+    logger.info('About to run: %s' % hdfs_cmd)
     out = subprocess.Popen(hdfs_cmd, shell=True, stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -123,34 +125,37 @@ def getDirStats(directory):
     return all_Files
 
 
-def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):
+def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp, logger):
     for item in allData:
         if not item:
             continue
         tmpI = item.split()
         size = int(tmpI[0].strip())
         fullPath = tmpI[2].strip()[cutFirst:]
-        print fullPath, size
+        logger.debug("Path: %s, Size: %s" % (fullPath, size))
         dbBackend.sendMetric(startKey, size, {'timestamp': timestamp, 'statKey': fullPath})
 
-def execute():
+
+def execute(logger):
     config = ConfigReader()
     dbInput = checkConfigForDB(config)
     dbBackend = opentsdb(dbInput)
     startTime = int(time.time())
-    print 'Running Main'
-    main(startTime, config, dbBackend)
-    print 'Getting dir stats'
-    allDirStats = getDirStats('/store')
-    publishMetrics(dbBackend, 'hadoop.spaceUsage.storeSpace', len('/store/'), allDirStats, startTime)
-    allDirStats = getDirStats('/store/user/')
-    publishMetrics(dbBackend, 'hadoop.spaceUsage.storeuserSpace', len('/store/user/'), allDirStats, startTime)
-    allDirStats = getDirStats('/store/group/')
-    publishMetrics(dbBackend, 'hadoop.spaceUsage.storegroupSpace', len('/store/group/'), allDirStats, startTime)
+    logger.info('Running Main')
+    main(startTime, config, dbBackend, logger)
+    logger.info('Getting dir stats')
+    allDirStats = getDirStats('/store', logger)
+    publishMetrics(dbBackend, 'hadoop.spaceUsage.storeSpace', len('/store/'), allDirStats, startTime, logger)
+    allDirStats = getDirStats('/store/user/', logger)
+    publishMetrics(dbBackend, 'hadoop.spaceUsage.storeuserSpace', len('/store/user/'), allDirStats, startTime, logger)
+    allDirStats = getDirStats('/store/group/', logger)
+    publishMetrics(dbBackend, 'hadoop.spaceUsage.storegroupSpace', len('/store/group/'), allDirStats, startTime, logger)
     dbBackend.stopWriter()  # Flush out everything what is left.
     endTime = int(time.time())
     totalRuntime = endTime - startTime
-    print 'StartTime: %s, EndTime: %s, Runtime: %s' % (startTime, endTime, totalRuntime)
+    logger.info('StartTime: %s, EndTime: %s, Runtime: %s' % (startTime, endTime, totalRuntime))
 
 if __name__ == "__main__":
-    execute()
+    DAEMONNAME = 'namenode-mon'
+    LOGGER = getLogger('/var/log/t2Mon/%s/' % DAEMONNAME)
+    execute(LOGGER)

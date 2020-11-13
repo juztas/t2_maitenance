@@ -4,26 +4,38 @@ import sys
 import time
 from t2Mon.XRootD.xrootd import execute
 from t2Mon.daemon import Daemon
+from t2Mon.common.logger import getLogger
+
+DAEMONNAME = 'xrootd-mon'
+LOGGER = getLogger('/var/log/t2Mon/%s/' % DAEMONNAME)
+
 
 class MyDaemon(Daemon):
     def run(self, runTimer):
         while True:
             runTimer = int(runTimer)
             startTime = int(time.time())
-            execute()
+            try:
+                execute(LOGGER)
+            except KeyboardInterrupt as ex:
+                LOGGER.critical("Received KeyboardInterrupt: %s ", ex)
+                exit(3)
+            except:
+                excType, excValue = sys.exc_info()[:2]
+                LOGGER.critical("Error details. ErrorType: %s, ErrMsg: %s", str(excType.__name__), excValue)
+                time.sleep(20)
             endTime = int(time.time())
             sleepTime = int(runTimer - (endTime - startTime))
             if sleepTime > 0:
-                print 'Sleeping %s seconds' % sleepTime
+                LOGGER.info('Sleeping %s seconds' % sleepTime)
                 time.sleep(int(sleepTime))
 
 if __name__ == "__main__":
-    daemonName = 'xrootd-mon'
-    if not os.path.isdir('/var/log/t2Mon/%s/' % daemonName):
-        os.makedirs('/var/log/t2Mon/%s/' % daemonName)
-    daemon =  MyDaemon('/tmp/daemon-%s.pid' % daemonName,
-                       stdout='/var/log/t2Mon/%s/std.out' % daemonName,
-                       stderr='/var/log/t2Mon/%s/std.err' % daemonName)
+    if not os.path.isdir('/var/log/t2Mon/%s/' % DAEMONNAME):
+        os.makedirs('/var/log/t2Mon/%s/' % DAEMONNAME)
+    daemon = MyDaemon('/tmp/daemon-%s.pid' % DAEMONNAME,
+                      stdout='/var/log/t2Mon/%s/std.out' % DAEMONNAME,
+                      stderr='/var/log/t2Mon/%s/std.err' % DAEMONNAME)
     if len(sys.argv) >= 2:
         if sys.argv[1] == 'start':
             if len(sys.argv) != 3:

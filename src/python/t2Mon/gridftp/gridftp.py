@@ -1,14 +1,12 @@
 #!/usr/bin/python
 import os
-import json
-import subprocess
 import time
 import datetime
 from tempfile import NamedTemporaryFile
-from t2Mon.common.Utilities import externalCommand
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
+from t2Mon.common.logger import getLogger
 
 COMMANDS = {"exclude": "grep 'New connection from: 0.0.0.0' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $13 \" \" 0}'",
             "success": "grep 'ended with rc' /var/log/gridftp-auth.log | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" $15}'",
@@ -21,6 +19,7 @@ UCSD_FALLBACK = "grep -E '169.228.13[0-3]' /var/log/gridftp-auth.log | grep 'Tra
 CALTECH_TEMP = "grep -E '(192.84.88.*|198.32.4[3-4].*)' /var/log/gridftp-auth.log | grep 'Transfer stats' | grep '/store/temp/user' | awk '{split($5, a, \":\"); print a[1] \" \" a[2] \" \" 0}'"
 # TODO for future;
 # Grep out Transfer stats and ip information. Also it shows the time for the transfer and also how many bytes were transferred.
+
 
 def getConnections(inputIP=None, call=None, filterIn=None):
     count = 0
@@ -41,11 +40,10 @@ def getConnections(inputIP=None, call=None, filterIn=None):
     return count
 
 
-def main(startTime, config, dbBackend):
+def main(startTime, config, dbBackend, logger):
     """ """
-    startTime -= 180 # Lets do all 2 minutes ago. and this has to be re-checked after run.
+    startTime -= 180  # Lets do all 2 minutes ago. and this has to be re-checked after run.
     parsedate = datetime.datetime.fromtimestamp(startTime)
-    print parsedate.hour, parsedate.minute
     findLine = "%02d %02d " % (parsedate.hour, parsedate.minute)
     out = {}
     for inType, command in COMMANDS.items():
@@ -60,7 +58,7 @@ def main(startTime, config, dbBackend):
                     out[inType].setdefault(splLine[2], 0)
                     out[inType][splLine[2]] += 1
         os.unlink(fd.name)
-    print out
+    logger.debug('Out %s' % out)
     if out['success'] and out['exclude']:
         out['success']['0'] -= out['exclude']['0']
     if out['success']:
@@ -75,7 +73,7 @@ def main(startTime, config, dbBackend):
     if out['firstBadLink']:
         for item, value in out['firstBadLink'].items():
             dbBackend.sendMetric('gridftp.status.firstBadLink', value, {'timestamp': startTime, 'statuskey': item})
-    print out
+    logger.debug('Out %s' % out)
     if config.hasOption('main', 'my_public_ip'):
         connCount = getConnections(config.getOption('main', 'my_public_ip'), CONNECTIONS)
         dbBackend.sendMetric('gridftp.status.connOutside', connCount, {'timestamp': startTime})
@@ -91,17 +89,20 @@ def main(startTime, config, dbBackend):
     dbBackend.sendMetric('gridftp.status.caltechtemp', connCount, {'timestamp': startTime})
     return
 
-def execute():
+
+def execute(logger):
     config = ConfigReader()
     dbInput = checkConfigForDB(config)
     dbBackend = opentsdb(dbInput)
     startTime = int(time.time())
-    print 'Running Main'
-    main(startTime, config, dbBackend)
+    logger.info('Running Main')
+    main(startTime, config, dbBackend, logger)
     dbBackend.stopWriter()  # Flush out everything what is left.
     endTime = int(time.time())
     totalRuntime = endTime - startTime
-    print 'StartTime: %s, EndTime: %s, Runtime: %s' % (startTime, endTime, totalRuntime)
+    logger.info('StartTime: %s, EndTime: %s, Runtime: %s' % (startTime, endTime, totalRuntime))
 
 if __name__ == "__main__":
-    execute()
+    DAEMONNAME = 'gridftp-mon'
+    LOGGER = getLogger('/var/log/t2Mon/%s/' % DAEMONNAME)
+    execute(LOGGER)
