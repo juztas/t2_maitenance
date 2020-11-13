@@ -80,7 +80,7 @@ def main(startTime, config, dbBackend, logger):
         connCount = getConnections(config.getOption('main', 'my_public_ip'), '1094')
         dbBackend.sendMetric('xrootd.status.connOutside', connCount, {'timestamp': startTime})
     if config.hasOption('main', 'my_private_ip'):
-        connCount = getConnections(config.getOption('main', 'my_private_ip'), '1094')
+        connCount = getConnections(config.getOption('main', 'my_private_ip'), '')
         dbBackend.sendMetric('xrootd.status.connPrivate', connCount, {'timestamp': startTime})
     if config.hasOption('main', 'my_public_ipv6'):
         connCount = getConnections(config.getOption('main', 'my_public_ipv6'), '1094')
@@ -89,9 +89,6 @@ def main(startTime, config, dbBackend, logger):
     if config.hasOption('main', 'my_public_ip'):
         connCount = getConnections(config.getOption('main', 'my_public_ip'), '1095')
         dbBackend.sendMetric('xrootd.status.connlocalipv4', connCount, {'timestamp': startTime})
-    if config.hasOption('main', 'my_private_ip'):
-        connCount = getConnections(config.getOption('main', 'my_private_ip'), '1095')
-        dbBackend.sendMetric('xrootd.status.connlocalprivate', connCount, {'timestamp': startTime})
     if config.hasOption('main', 'my_public_ipv6'):
         connCount = getConnections(config.getOption('main', 'my_public_ipv6'), '1095')
         dbBackend.sendMetric('xrootd.status.connlocalipv6', connCount, {'timestamp': startTime})
