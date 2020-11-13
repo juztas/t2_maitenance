@@ -71,7 +71,7 @@ def main(currdate, redirector, dbBackend, logger):
             logger.info('Call command %s' % cmd)
             _ = check_output(cmd, shell=True)
             exCode = 0
-            logger.info('Got Exit: %s, Host: %s ' % (str(ex), host))
+            logger.info('Got Exit: %s, Host: %s ' % (exCode, host))
         except CalledProcessError as ex:
             exCode = ex.returncode
             logger.critical('Got Error: %s, Host: %s ' % (str(ex), host))
@@ -83,8 +83,9 @@ def execute(logger):
     config = ConfigReader()
     dbInput = checkConfigForDB(config)
     dbBackend = opentsdb(dbInput)
+    redirector = ""
     if config.hasSection('xcache'):
-        redirector = config.getOptions('redirector')
+        redirector = config.getOptions('xcache')['redirector']
     if not redirector:
         raise Exception('Redirector not set in configuration')
     startTime = int(time.time())
