@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import gc
 import socket
 import json
 import shutil
@@ -35,7 +36,7 @@ def getipfromhostname(hostname):
         return 2
     except Exception as ex:
         # New exception unknown.
-        print 'Got Exception: %s' % ex
+        print('Got Exception: %s' % ex)
         return 1
 
 
@@ -102,14 +103,6 @@ def main(timestamp, config, dbBackend, logger):
         except ZeroDivisionError as ex:
             logger.debug('Zero Division Error for %s %s. Exception: %s' % (nodename, str(nodevals), ex))
             continue
-    with open('/tmp/nodelistpercent.temp', 'a') as fd:
-        counter = 20
-        for key, value in sorted(nodesizes.iteritems(), key=lambda (k, v): (v, k)):
-            if counter <= 0:
-                break
-            counter -= 1
-            fd.write('%s\n' % socket.gethostbyname(key))
-    shutil.move('/tmp/nodelistpercent.temp', '/tmp/nodelistpercent.list')
     for key, value in totalNodes.items():
         dbBackend.sendMetric('hadoop.nodestatus.%s' % key, value, {'timestamp': timestamp})
 
@@ -158,4 +151,12 @@ def execute(logger):
 if __name__ == "__main__":
     DAEMONNAME = 'namenode-mon'
     LOGGER = getStreamLogger()
+    import pdb; pdb.set_trace()
+    found_objects = gc.get_objects()
+    print('%d objects before' % len(found_objects))
     execute(LOGGER)
+    found_objects = gc.get_objects()
+    print('%d objects after' % len(found_objects))
+    execute(LOGGER)
+    found_objects = gc.get_objects()
+    print('%d objects after' % len(found_objects))

@@ -18,7 +18,7 @@ def preparefiles(currdate, logger):
         _ = check_output("fallocate -l 16M /tmp/xrd-cache-test", shell=True)
     for i in range(0, 24):
         newdate = currdate + timedelta(hours=i)
-        fullLfn = '/mnt/hadoop/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (newdate.year, newdate.month,
+        fullLfn = '/storage/cms/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (newdate.year, newdate.month,
                                                                                             newdate.day, newdate.hour)
         cmd = "cp /tmp/xrd-cache-test %s" % fullLfn
         logger.info('Call CMD: %s', cmd)
@@ -29,7 +29,8 @@ def preparefiles(currdate, logger):
 def main(currdate, redirector, dbBackend, logger):
     currLFN = '/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (currdate.year, currdate.month,
                                                                              currdate.day, currdate.hour)
-    cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 30 xrdfs %s locate /store/" % redirector
+    cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 30 xrdmapc --list all %s" % redirector
+    # xrdmapc --list all xcache.ultralight.org:2040
     # returns output as byte string
     logger.info('Calling %s' % cmd)
     timeNow = int(time.time())
@@ -43,33 +44,21 @@ def main(currdate, redirector, dbBackend, logger):
                              exCode, {'myhost': 'REDIRECTOR_URGENT-%s' % redirector, 'timestamp': timeNow})
         return
     logger.info('Returned out from Redirector: %s' % retOutput)
-    reghost = re.compile(r'\[::([0-9.]*)].*')
-    reghostipv6 = re.compile(r'\[([0-9a-z.:]*)].*')
     timeNow = int(time.time())
     for line in retOutput.decode("utf-8").split('\n'):
         if not line:
             break
         host = 'localhost'
-        regmatch = reghost.match(line)
-        regmatchipv6 = reghostipv6.match(line)
-        if regmatch:
-            host = regmatch.group(1)
-        elif regmatchipv6:
-            print regmatchipv6.group(1)
-            try:
-                host = socket.gethostbyaddr(regmatchipv6.group(1))[0]
-            except socket.herror:
-                host = str(regmatchipv6.group(1))
+        line = line.strip()
+        if line.startswith('Srv '):
+            host = line.split()[1]
         else:
-            logger.critical('Failed to parse %s' % line)
-            dbBackend.sendMetric('xrd.cache.status',
-                                 exCode, {'myhost': 'FAILED-%s' % line.replace(' ' '-'), 'timestamp': timeNow})
-            break
+            continue
         newfile = "root://%s/%s" % (host, currLFN)
-        cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 60 xrdcp -f %s %s" % (newfile, "/dev/null")
+        cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 60 xrdcp -d2 -f %s %s" % (newfile, "/dev/null")
         try:
             logger.info('Call command %s' % cmd)
-            _ = check_output(cmd, shell=True)
+            out = check_output(cmd, shell=True)
             exCode = 0
             logger.info('Got Exit: %s, Host: %s ' % (exCode, host))
         except CalledProcessError as ex:

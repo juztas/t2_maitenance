@@ -1,7 +1,9 @@
 #!/usr/bin/python
 import os
 import time
+import hashlib
 import datetime
+import shlex
 from tempfile import NamedTemporaryFile
 from t2Mon.common.Utilities import checkConfigForDB
 from t2Mon.common.configReader import ConfigReader
@@ -10,16 +12,16 @@ from t2Mon.common.logger import getStreamLogger
 
 COMMANDS = {"login": "grep 'XrootdXeq' %s | grep 'login as' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" $10}'",
             "disc": "grep 'XrootdXeq' %s | grep ' disc ' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" 0 \" \" $7}'",
-            "failedConnXRootdHDFS": "tail -n 1000000 %s | grep 'Failed to connect to' | awk '{split($2, a, \":\"); split($9, b, \":\"); print a[1] \" \" a[2] \" \" substr(b[1],2)}'"}
+            "finishedTransfers": "cat %s | grep 'TPC_PullRequest'",
+            "finishedTransfers1": "cat %s | grep 'TPC_PushRequest'"}
 
 XROOTD_FILES = ['/var/log/xrootd/xrootd.log',
                 '/var/log/xrootd/2/xrootd.log',
                 '/var/log/xrootd/3/xrootd.log',
                 '/var/log/xrootd/4/xrootd.log',
                 '/var/log/xrootd/clustered/xrootd.log',
-                '/var/log/xrootd/xcache/xrootd.log']
-
-XROOTD_FILES_LOCAL = ['/var/log/xrootd/clusteredtier2/xrootd.log']
+                '/var/log/xrootd/xcache/xrootd.log',
+                ]
 
 
 CONNECTIONS = "netstat -tuplna | grep xrootd | grep tcp | grep %s | grep %s"
@@ -38,15 +40,41 @@ def getConnections(inputIP, portN):
     os.unlink(fd.name)
     return count
 
+def netlogger(inLine, flag):
+    inLine = inLine.strip().split(';')
+    errMsg = ""
+    if len(inLine) > 1:
+        errMsg = " ".join(inLine[1:])
+    print inLine, flag
+    ntLogLine = inLine[0].split('%s:' % flag)[1].replace(" ", "")
+    lexLine = shlex.shlex(ntLogLine, posix=True)
+    lexLine.whitespace_split = True
+    lexLine.whitespace = ','
+    mappedDict = dict(pair.split('=', 1) for pair in lexLine)
+    outDict = {'tmode': flag}
+    if errMsg:
+        hashObject = hashlib.md5(errMsg.encode())
+        mdHash = hashObject.hexdigest()
+        outDict['errHash'] = mdHash
+    for key in ['user', 'tpc_status', 'event', 'errHash']:
+        if key in mappedDict.keys():
+            outDict[key] = mappedDict[key]
+    return outDict
+    
+    #print inLine, out
 
 def parseXRootDFiles(startTime, dbBackend, xrootd_files, flag, logger):
     """ """
     startTime -= 180  # Lets do all 2 minutes ago. and this has to be re-checked after run.
     parsedate = datetime.datetime.fromtimestamp(startTime)
     findLine = "%02d %02d " % (parsedate.hour, parsedate.minute)
+    #findLineTPC = "%02d%02d%02d %02d:%02d" % (parsedate.year-2000, parsedate.month, parsedate.day, parsedate.hour, parsedate.minute)
+    findLineTPC = "%02d%02d%02d" % (parsedate.year-2000, parsedate.month, parsedate.day)
     out = {}
     for inType, command in COMMANDS.items():
         out[inType] = {}
+        if inType in ['finishedTransfers', 'finishedTransfers1']:
+            out[inType] = []
         fd = NamedTemporaryFile(delete=False)
         fd.close()
         for fileName in xrootd_files:
@@ -55,7 +83,11 @@ def parseXRootDFiles(startTime, dbBackend, xrootd_files, flag, logger):
                 os.system("%s &> %s" % (command % fileName, fd.name))
                 with open(fd.name, 'r') as fd1:
                     for line in fd1.readlines():
-                        if line.startswith(findLine):
+                        if inType == 'finishedTransfers' and line.startswith(findLineTPC):
+                            out[inType].append(netlogger(line, 'TPC_PullRequest'))
+                        if inType == 'finishedTransfers1' and line.startswith(findLineTPC):
+                            out[inType].append(netlogger(line, 'TPC_PushRequest'))
+                        elif line.startswith(findLine):
                             splLine = line.split()
                             out[inType].setdefault(splLine[2], 0)
                             out[inType][splLine[2]] += 1
@@ -66,15 +98,21 @@ def parseXRootDFiles(startTime, dbBackend, xrootd_files, flag, logger):
     if out['disc']:
         for item, value in out['disc'].items():
             dbBackend.sendMetric('xrootd.status.discon', value, {'timestamp': startTime, 'statuskey': item, 'flag': flag})
-    if out['failedConnXRootdHDFS']:
-        for item, value in out['failedConnXRootdHDFS'].items():
-            dbBackend.sendMetric('xrootd.status.failedHDFS', value, {'timestamp': startTime, 'statuskey': item, 'flag': flag})
+    if out['finishedTransfers']:
+        for item in out['finishedTransfers']:
+            exitCode = item['tpc_status'] if 'tpc_status' in item else 0
+            item['timestamp'] = startTime
+            dbBackend.sendMetric('xrootd.status.tpc', exitCode, item)
+    if out['finishedTransfers1']:
+        for item in out['finishedTransfers1']:
+            exitCode = item['tpc_status'] if 'tpc_status' in item else 0
+            item['timestamp'] = startTime
+            dbBackend.sendMetric('xrootd.status.tpc', exitCode, item)
     logger.debug("Out: %s" % out)
 
 
 def main(startTime, config, dbBackend, logger):
     parseXRootDFiles(startTime, dbBackend, XROOTD_FILES, 'remote', logger)
-    parseXRootDFiles(startTime, dbBackend, XROOTD_FILES_LOCAL, 'local', logger)
 
     if config.hasOption('main', 'my_public_ip'):
         connCount = getConnections(config.getOption('main', 'my_public_ip'), '1094')
