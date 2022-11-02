@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import os
-import ConfigParser
+import configparser
 
 
 class ConfigReader(object):
@@ -13,7 +13,7 @@ class ConfigReader(object):
 
     def getConfig(self):
         """ Get parsed configuration """
-        self.config = ConfigParser.ConfigParser()
+        self.config = configparser.ConfigParser()
         if os.path.isfile(self.configLocation):
             self.config.read(self.configLocation)
             return True

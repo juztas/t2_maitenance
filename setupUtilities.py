@@ -20,7 +20,7 @@ Date			: 2017/09/26
 """
 import os
 import sys
-import ConfigParser
+import configparser
 
 def get_path_to_root(appendLocation=None):
     """

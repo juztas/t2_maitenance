@@ -37,7 +37,7 @@ class Daemon(object):
             if pid > 0:
                 # exit first parent
                 sys.exit(0)
-        except OSError, e:
+        except OSError as e:
             sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
             sys.exit(1)
 
@@ -52,7 +52,7 @@ class Daemon(object):
             if pid > 0:
                 # exit from second parent
                 sys.exit(0)
-        except OSError, e:
+        except OSError as e:
             sys.stderr.write("fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
             sys.exit(1)
 
@@ -110,7 +110,7 @@ class Daemon(object):
             pid = int(pidf.read().strip())
             pidf.close()
             if not check_pid(pid):
-                print 'PID exists, but process is not running'
+                print('PID exists, but process is not running')
                 sys.exit(1)
         except IOError:
             pid = None
@@ -125,13 +125,13 @@ class Daemon(object):
             while 1:
                 os.kill(pid, SIGTERM)
                 time.sleep(0.1)
-        except OSError, err:
+        except OSError as err:
             err = str(err)
             if err.find("No such process") > 0:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
-                print str(err)
+                print((str(err)))
                 sys.exit(1)
 
     def status(self):
@@ -141,11 +141,11 @@ class Daemon(object):
         try:
             pidf = file(self.pidfile, 'r')
             pid = int(pidf.read().strip())
-            print 'PID %s' % pid
+            print(('PID %s' % pid))
             pidf.close()
         except IOError:
             pid = None
-            print 'Is application running?'
+            print('Is application running?')
             sys.exit(1)
 
     def restart(self, runTimer):

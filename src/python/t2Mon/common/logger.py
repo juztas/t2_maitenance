@@ -12,7 +12,7 @@ def createDirs(fullDirPath):
         try:
             os.makedirs(dirname)
         except OSError as ex:
-            print 'Received exception creating %s directory. Exception: %s' % (dirname, ex)
+            print(('Received exception creating %s directory. Exception: %s' % (dirname, ex)))
             if not os.path.isdir(dirname):
                 raise
     return

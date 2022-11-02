@@ -27,7 +27,7 @@ def getProcInfo(procPID):
     memUsageProc['Swap'] = memInfo.swap
     itemOut['Connections'] = {}
     for item in procS.connections():
-        if item.status not in itemOut['Connections'].keys():
+        if item.status not in list(itemOut['Connections'].keys()):
             itemOut['Connections'][item.status] = 0
         itemOut['Connections'][item.status] += 1
     return itemOut

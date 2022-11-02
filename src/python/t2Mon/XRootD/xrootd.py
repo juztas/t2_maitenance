@@ -45,7 +45,7 @@ def netlogger(inLine, flag):
     errMsg = ""
     if len(inLine) > 1:
         errMsg = " ".join(inLine[1:])
-    print inLine, flag
+    print((inLine, flag))
     ntLogLine = inLine[0].split('%s:' % flag)[1].replace(" ", "")
     lexLine = shlex.shlex(ntLogLine, posix=True)
     lexLine.whitespace_split = True
@@ -57,13 +57,13 @@ def netlogger(inLine, flag):
         mdHash = hashObject.hexdigest()
         outDict['errHash'] = mdHash
     for key in ['user', 'tpc_status', 'event', 'errHash']:
-        if key in mappedDict.keys():
+        if key in list(mappedDict.keys()):
             outDict[key] = mappedDict[key]
     return outDict
     
     #print inLine, out
 
-def parseXRootDFiles(startTime, dbBackend, xrootd_files, flag, logger):
+def parseXRootDFiles(startTime, dbBackend, xrootd_files, flag, logger, config):
     """ """
     startTime -= 180  # Lets do all 2 minutes ago. and this has to be re-checked after run.
     parsedate = datetime.datetime.fromtimestamp(startTime)
@@ -71,7 +71,7 @@ def parseXRootDFiles(startTime, dbBackend, xrootd_files, flag, logger):
     #findLineTPC = "%02d%02d%02d %02d:%02d" % (parsedate.year-2000, parsedate.month, parsedate.day, parsedate.hour, parsedate.minute)
     findLineTPC = "%02d%02d%02d" % (parsedate.year-2000, parsedate.month, parsedate.day)
     out = {}
-    for inType, command in COMMANDS.items():
+    for inType, command in list(COMMANDS.items()):
         out[inType] = {}
         if inType in ['finishedTransfers', 'finishedTransfers1']:
             out[inType] = []
@@ -93,55 +93,36 @@ def parseXRootDFiles(startTime, dbBackend, xrootd_files, flag, logger):
                             out[inType][splLine[2]] += 1
         os.unlink(fd.name)
     if out['login']:
-        for item, value in out['login'].items():
-            dbBackend.sendMetric('xrootd.status.logins', value, {'timestamp': startTime, 'statuskey': item, 'flag': flag})
+        for item, value in list(out['login'].items()):
+            dbBackend.sendMetric('xrootd.status.logins', value, {'timestamp': startTime, 'statuskey': item, 'flag': flag, 'xrootd_type': config.getOption('main', 'xrootd_type')})
     if out['disc']:
-        for item, value in out['disc'].items():
-            dbBackend.sendMetric('xrootd.status.discon', value, {'timestamp': startTime, 'statuskey': item, 'flag': flag})
+        for item, value in list(out['disc'].items()):
+            dbBackend.sendMetric('xrootd.status.discon', value, {'timestamp': startTime, 'statuskey': item, 'flag': flag, 'xrootd_type': config.getOption('main', 'xrootd_type')})
     if out['finishedTransfers']:
         for item in out['finishedTransfers']:
             exitCode = item['tpc_status'] if 'tpc_status' in item else 0
             item['timestamp'] = startTime
+            item['xrootd_type'] = config.getOption('main', 'xrootd_type')
             dbBackend.sendMetric('xrootd.status.tpc', exitCode, item)
     if out['finishedTransfers1']:
         for item in out['finishedTransfers1']:
             exitCode = item['tpc_status'] if 'tpc_status' in item else 0
             item['timestamp'] = startTime
+            item['xrootd_type'] = config.getOption('main', 'xrootd_type')
             dbBackend.sendMetric('xrootd.status.tpc', exitCode, item)
     logger.debug("Out: %s" % out)
 
 
 def main(startTime, config, dbBackend, logger):
-    parseXRootDFiles(startTime, dbBackend, XROOTD_FILES, 'remote', logger)
+    parseXRootDFiles(startTime, dbBackend, XROOTD_FILES, 'remote', logger, config)
 
     if config.hasOption('main', 'my_public_ip'):
-        connCount = getConnections(config.getOption('main', 'my_public_ip'), '1094')
-        dbBackend.sendMetric('xrootd.status.connOutside', connCount, {'timestamp': startTime})
-    if config.hasOption('main', 'my_private_ip'):
-        connCount = getConnections(config.getOption('main', 'my_private_ip'), '')
-        dbBackend.sendMetric('xrootd.status.connPrivate', connCount, {'timestamp': startTime})
+        connCount = getConnections(config.getOption('main', 'my_public_ip'), config.getOption('main', 'xrootd_port'))
+        dbBackend.sendMetric('xrootd.status.connOutside', connCount, {'timestamp': startTime, 'xrootd_type': config.getOption('main', 'xrootd_type')})
     if config.hasOption('main', 'my_public_ipv6'):
-        connCount = getConnections(config.getOption('main', 'my_public_ipv6'), '1094')
-        dbBackend.sendMetric('xrootd.status.connOutsidev6', connCount, {'timestamp': startTime})
-    # 1095 is used for local access.
-    if config.hasOption('main', 'my_public_ip'):
-        connCount = getConnections(config.getOption('main', 'my_public_ip'), '1095')
-        dbBackend.sendMetric('xrootd.status.connlocalipv4', connCount, {'timestamp': startTime})
-    if config.hasOption('main', 'my_public_ipv6'):
-        connCount = getConnections(config.getOption('main', 'my_public_ipv6'), '1095')
-        dbBackend.sendMetric('xrootd.status.connlocalipv6', connCount, {'timestamp': startTime})
-
+        connCount = getConnections(config.getOption('main', 'my_public_ipv6'), config.getOption('main', 'xrootd_port'))
+        dbBackend.sendMetric('xrootd.status.connOutsidev6', connCount, {'timestamp': startTime, 'xrootd_type': config.getOption('main', 'xrootd_type')})
     return
-
-
-def publishMetrics(dbBackend, startKey, cutFirst, allData, timestamp):
-    for item in allData:
-        if not item:
-            continue
-        tmpI = item.split()
-        size = int(tmpI[0].strip())
-        fullPath = tmpI[1].strip()[cutFirst:]
-        dbBackend.sendMetric(startKey, size, {'timestamp': timestamp, 'statKey': fullPath})
 
 
 def execute(logger):

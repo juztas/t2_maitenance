@@ -18,7 +18,7 @@ def getDaemon(daemonName):
     elif daemonName == 'datanode':
         from t2Mon.hdfs.datanode import MyDaemon
     else:
-        print "Unknown Daemon. Available: xrootd, gridftp, namenode, datanode"
+        print("Unknown Daemon. Available: xrootd, gridftp, namenode, datanode")
         sys.exit(2)
     return MyDaemon('/tmp/daemon-%s.pid' % daemonName,
                     stdout='/var/log/t2Mon/%s/std.out' % daemonName,
@@ -37,9 +37,9 @@ if __name__ == "__main__":
         elif sys.argv[2] == 'status':
             daemon.status()
         else:
-            print "Unknown command"
+            print("Unknown command")
             sys.exit(2)
         sys.exit(0)
     else:
-        print "usage: %s start|stop|status|restart" % sys.argv[0]
+        print(("usage: %s start|stop|status|restart" % sys.argv[0]))
         sys.exit(2)

@@ -770,13 +770,13 @@ CSXE_FILES = [{'name':"/store/mc/SAM/GenericTTbar/AODSIM/" + \
 # ########################################################################### #
 
 def probe_read(args, sitename, endpoint):
-    if 'XRD_NETWORKSTACK' in os.environ.keys():
+    if 'XRD_NETWORKSTACK' in list(os.environ.keys()):
         del os.environ["XRD_NETWORKSTACK"]
     if args.ipv4 and ( not args.ipv6 ):
-        print 'ipv4'
+        print('ipv4')
         os.environ["XRD_NETWORKSTACK"] = "IPv4"
     if ( not args.ipv4 ) and args.ipv6:
-        print 'ipv6'
+        print('ipv6')
         os.environ["XRD_NETWORKSTACK"] = "IPv6"
     if ( not sitename):
         return
@@ -791,27 +791,27 @@ def probe_read(args, sitename, endpoint):
             #        timeout=180)
             if ( not status.ok ):
                 host = f.get_property('DataServer')
-                print host
-                print(("\nopen(root://%s/%s, flags=OpenFlags.READ, time" + \
+                print(host)
+                print((("\nopen(root://%s/%s, flags=OpenFlags.READ, time" + \
                           "out=90)\nXRootDStatus.code=%d \"%s\"\n") % \
                           (endpoint, filename, status.code, \
-                          status.message.replace("\n", "")))
+                          status.message.replace("\n", ""))))
                 publish(args, args.sttime, sitename, status.code)
                 return
             host = f.get_property('DataServer')
             status, data = f.read(offset=0, size=65536, timeout=90)
             if ( not status.ok ):
-                print(("\n%s\nread(offset=0, size=65536, timeout=90)\n" + \
+                print((("\n%s\nread(offset=0, size=65536, timeout=90)\n" + \
                           "XRootDStatus.code=%d \"%s\"\n") % (filename, \
-                          status.code, status.message.replace("\n", "")))
+                          status.code, status.message.replace("\n", ""))))
                 publish(args, args.sttime, sitename, status.code)
                 return
             #
             chksum = hex(zlib.adler32(data) & 0xffffffff)[2:]
             if ( chksum != file['adlr'] ):
-                print(("\nblock 0 checksum mismatch, test file \"%s\", " + \
+                print((("\nblock 0 checksum mismatch, test file \"%s\", " + \
                           "adler32 is \"%s\" should be \"%s\"\n") % \
-                         (filename, chksum, file['adlr']))
+                         (filename, chksum, file['adlr'])))
                 publish(args, args.sttime, sitename, 10)
                 return
             #
@@ -819,25 +819,25 @@ def probe_read(args, sitename, endpoint):
             #
             status, data = f.read(offset=rndm*65536, size=65536, timeout=90)
             if ( not status.ok ):
-                print(("\n%s\nread(offset=%d, size=65536, timeout=90)\n" + \
+                print((("\n%s\nread(offset=%d, size=65536, timeout=90)\n" + \
                           "XRootDStatus.code=%d \"%s\"\n") % \
                           (filename, rndm*65536, status.code, \
-                           status.message.replace("\n", "")))
+                           status.message.replace("\n", ""))))
                 publish(args, args.sttime, sitename, status.code)
                 return
             #
             chk73c = CSXE_ASCII73CODE[ (zlib.adler32(data) & 0xffffffff) % 73 ]
             if ( chk73c != file['code'][rndm] ):
-                print(("\nblock %d checksum mismatch, test file \"%s\"," + \
+                print((("\nblock %d checksum mismatch, test file \"%s\"," + \
                           " adler32 code-73 is \"%s\" should be \"%s\"\n") % \
-                         (rndm, filename, chk73c, file['code'][rndm]))
+                         (rndm, filename, chk73c, file['code'][rndm])))
                 publish(args, args.sttime, sitename, 11)
                 return
             #
             host = f.get_property('DataServer')
 
-            print(("\nBlock 0 and %d of file \"%s\" successfully read from " + \
-                "\"%s\" and checksum of data verified\n") % (rndm, filename, host))
+            print((("\nBlock 0 and %d of file \"%s\" successfully read from " + \
+                "\"%s\" and checksum of data verified\n") % (rndm, filename, host)))
             publish(args, args.sttime, sitename, 0)
 
 parser = argparse.ArgumentParser()
@@ -852,7 +852,7 @@ args = parser.parse_args()
 if __name__ == '__main__':
     while True:
         sttime = int(time.time())
-        print sttime
+        print(sttime)
         args.sttime = sttime
         args.ipv6 = True
         args.ipv4 = None
@@ -864,5 +864,5 @@ if __name__ == '__main__':
         difftime = endtime - sttime
         diffsleep = 300 - difftime
         if diffsleep > 0:
-            print 'Sleep %s ' % diffsleep
+            print(('Sleep %s ' % diffsleep))
             time.sleep(diffsleep)

@@ -26,8 +26,8 @@ class opentsdb(object):
             try:
                 self.metrics = potsdb.Client(self.ip, port=self.port, qsize=self.qsize, host_tag=self.host_tag, mps=self.mps, check_host=self.check_host)
             except socket.error as ex:
-                print 'Received socket error %s' % str(ex)
-                print 'Will sleep 15 seconds and try again'
+                print('Received socket error %s' % str(ex))
+                print('Will sleep 15 seconds and try again')
                 sleep(15)
 
     def stopWriter(self):

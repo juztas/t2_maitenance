@@ -11,7 +11,7 @@ def writelog(subp, outf):
         for line in subp.split('\n'):
             line = line.rstrip()
             fd.write("%s\n" % line)
-            print line
+            print(line)
 
 def execute():
     config = ConfigReader()
@@ -26,7 +26,7 @@ def execute():
         newfile = "root://cmsxrootd.fnal.gov//store/test/xrootd/%s/store/mc/SAM/GenericTTbar/AODSIM/CMSSW_9_2_6_91X_mcRun1_realistic_v2-v1/00000/A64CCCF2-5C76-E711-B359-0CC47A78A3F8.root" % host
         outfile = 'output/%s-%s' % (host, CURRENT_TIME)
         cmd = "timeout 300 xrdcp --debug 3 -f %s %s" % (newfile, "/dev/null")
-        print cmd
+        print(cmd)
         streamdata = ""
         try:
             out = Popen(cmd.split(), stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
@@ -52,5 +52,5 @@ if __name__ == "__main__":
         difftime = endtime - sttime
         diffsleep = 1800 - difftime
         if diffsleep > 0:
-            print 'Sleep %s ' % diffsleep 
+            print(('Sleep %s ' % diffsleep)) 
             time.sleep(diffsleep)

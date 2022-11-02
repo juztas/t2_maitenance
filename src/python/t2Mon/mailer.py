@@ -35,7 +35,7 @@ def getDirStats(directory):
 
 def printTabular(itemsDict, leftWidth, rightWidth, dirName, output):
     output += "\n" + str(dirName).center(leftWidth + rightWidth, '-') + "\n"
-    for k, v in itemsDict.items():
+    for k, v in list(itemsDict.items()):
         output+= k.ljust(leftWidth, '.') + str(v).rjust(rightWidth) + '\n'
     output += '\n'
     return output
@@ -43,7 +43,7 @@ def printTabular(itemsDict, leftWidth, rightWidth, dirName, output):
 
 def execute():
     output=""
-    print 'Getting dir stats'
+    print('Getting dir stats')
     now  = datetime.datetime.now()
     output += "[CITMon] Caltech Tier2 Storage information at %s\n" % now.strftime("%Y-%m-%d %H:%M")
     output+="This is an automated email from the Tier2 monitoring system. Do not reply to this email and if you have any question, please write to t2admin@hep.caltech.edu\n"
@@ -52,7 +52,7 @@ def execute():
         allDirStats = getDirStats(mainDir)
         dirDict = {}
         for direct in allDirStats:
-            dirvals = filter(None, direct.split(' '))
+            dirvals = [_f for _f in direct.split(' ') if _f]
             if dirvals:
                 newSize, newSizeType = sizeConverter(int(dirvals[0]))
                 dirDict[dirvals[2].split('/')[-1]] = "%s %s" % (newSize, newSizeType)
@@ -73,6 +73,6 @@ def execute():
     output += "Tier2 HTCondor queues monitoring: https://sensei3.hep.caltech.edu:3000/d/jL88TdcWz/condor?orgId=1\n"
     output += "Tier2 GPUs monitoring: https://sensei3.hep.caltech.edu:3000/d/XNi-A4Gik/gpus-mon?orgId=1\n"
     stdout, _stderr = runCommand("curl -X POST -H 'Content-type: application/json' --data \"{'text':'%s'}\" %s &> /dev/null" % (output, "https://hooks.slack.com/services/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"))
-    print output
+    print(output)
 if __name__ == "__main__":
     execute()
