@@ -18,5 +18,4 @@ setup(name='t2Mon',
       py_modules=get_py_modules(['src/python/t2Mon']),
       install_requires=['potsdb'],
       package_dir={'': 'src/python/'},
-      data_files=CONFIG,
-      scripts=["src/executors/xrootd-mon", "src/executors/xcache-mon"])
+      data_files=CONFIG)
