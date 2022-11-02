@@ -21,7 +21,7 @@ XROOTD_FILES = ['/var/log/xrootd/xrootd.log',
                 '/var/log/xrootd/4/xrootd.log',
                 '/var/log/xrootd/clustered/xrootd.log',
                 '/var/log/xrootd/xcache/xrootd.log',
-                ]
+                '/var/log/xrootd/stageout/xrootd.log']
 
 
 CONNECTIONS = "netstat -tuplna | grep xrootd | grep tcp | grep %s | grep %s"

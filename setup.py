@@ -19,6 +19,4 @@ setup(name='t2Mon',
       install_requires=['potsdb'],
       package_dir={'': 'src/python/'},
       data_files=CONFIG,
-      scripts=["src/executors/namenode-mon", "src/executors/gridftp-mon",
-               "src/executors/xrootd-mon", "src/executors/hdfs-mailer",
-               "src/executors/xcache-mon"])
+      scripts=["src/executors/xrootd-mon", "src/executors/xcache-mon"])
