@@ -140,4 +140,6 @@ def execute(logger):
 if __name__ == "__main__":
     DAEMONNAME = 'namenode-mon'
     LOGGER = getStreamLogger()
-    execute(LOGGER)
+    while True:
+        execute(LOGGER)
+        time.sleep(60)
