@@ -29,7 +29,7 @@ def preparefiles(currdate, logger):
 def main(currdate, redirector, dbBackend, logger):
     currLFN = '/store/temp/user/jbalcas.cachetest/%s-%s-%s-%s-cache-test' % (currdate.year, currdate.month,
                                                                              currdate.day, currdate.hour)
-    cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 30 xrdmapc --list all %s" % redirector
+    cmd = "X509_USER_PROXY=/etc/grid-security/x509 timeout 30 xrdmapc --list all %s" % redirector
     # xrdmapc --list all xcache.ultralight.org:2040
     # returns output as byte string
     logger.info('Calling %s' % cmd)
@@ -55,7 +55,7 @@ def main(currdate, redirector, dbBackend, logger):
         else:
             continue
         newfile = "root://%s/%s" % (host, currLFN)
-        cmd = "X509_USER_PROXY=/root/x509UserProxy timeout 60 xrdcp -d2 -f %s %s" % (newfile, "/dev/null")
+        cmd = "X509_USER_PROXY=/etc/grid-security/x509 timeout 60 xrdcp -d2 -f %s %s" % (newfile, "/dev/null")
         try:
             logger.info('Call command %s' % cmd)
             out = check_output(cmd, shell=True)
