@@ -10,8 +10,8 @@ from t2Mon.common.configReader import ConfigReader
 from t2Mon.common.database.opentsdb import opentsdb
 from t2Mon.common.logger import getStreamLogger
 
-COMMANDS = {"login": "grep 'XrootdXeq' %s | grep 'login as' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" $10}'",
-            "disc": "grep 'XrootdXeq' %s | grep ' disc ' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" 0 \" \" $7}'",
+COMMANDS = {"login": "grep -E '(XrootdXeq|XrootdBridge)' %s | grep 'login as' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" $10}'",
+            "disc": "grep -E '(XrootdXeq|XrootdBridge)' %s | grep ' disc ' | awk '{split($2, a, \":\"); print a[1] \" \" a[2] \" \" 0 \" \" $7}'",
             "finishedTransfers": "cat %s | grep 'TPC_PullRequest'",
             "finishedTransfers1": "cat %s | grep 'TPC_PushRequest'"}
 
