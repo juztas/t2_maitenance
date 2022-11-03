@@ -72,9 +72,7 @@ def execute(logger):
     config = ConfigReader()
     dbInput = checkConfigForDB(config)
     dbBackend = opentsdb(dbInput)
-    redirector = ""
-    if config.hasSection('xcache'):
-        redirector = config.getOptions('xcache')['redirector']
+    redirector = os.environ.get('REDIRECTOR')
     if not redirector:
         raise Exception('Redirector not set in configuration')
     startTime = int(time.time())
