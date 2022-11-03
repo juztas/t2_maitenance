@@ -89,4 +89,11 @@ def execute(logger):
 if __name__ == "__main__":
     DAEMONNAME = 'xcache-mon'
     LOGGER = getStreamLogger()
-    execute(LOGGER)
+    while True:
+        startTime = int(time.time())
+        execute(LOGGER)
+        endTime = int(time.time())
+        sleepTime = int(300 - (endTime - startTime))
+        if sleepTime > 0:
+            LOGGER.info('Sleeping %s seconds' % sleepTime)
+            time.sleep(int(sleepTime))
